@@ -34,7 +34,7 @@ Distributed location: neobank-project/
 The original run used a separate eight-file sanitized copy. The distributed
 Python/dependency files match that source; the README and .gitignore were repackaged.
 
-Included:
+Eight core files used by the source-scan helper:
   .gitignore
   agent.py
   app.py
@@ -43,6 +43,13 @@ Included:
   README.md
   requirements.txt
   seed_data.py
+
+Also supplied for the optional application reference tabs:
+  architecture.html
+  security_guide.html
+
+These pages were added after recording; they were not in the saved eight-file
+scan. The helper still copies only the eight core files listed above.
 
 Excluded:
   Settings containing secrets, API keys, existing database,

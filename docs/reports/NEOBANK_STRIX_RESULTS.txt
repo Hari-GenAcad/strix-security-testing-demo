@@ -50,8 +50,10 @@ Published source location:
   neobank-project/
 
 The six Python/dependency files retain the scanned content. The public README
-and .gitignore were repackaged for learners, so the current eight-file package
-is not claimed to match every historical hash.
+and .gitignore were repackaged for learners, so the current core files are not
+claimed to match every historical hash. Two optional reference pages,
+architecture.html and security_guide.html, were added after recording and were
+not assessed in the saved scan. The helper still copies only the eight core files.
 
 Excluded content included environment secrets, the existing database, virtual
 environments, caches, logs, and unrelated files. The project identifies its seed

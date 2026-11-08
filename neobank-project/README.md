@@ -18,14 +18,23 @@ The project contains:
 - `knowledge_base.py` — fictional banking policies
 - `seed_data.py` — fictional customer and transaction records
 - `requirements.txt` — Python dependencies
+- `architecture.html` — optional application architecture reference
+- `security_guide.html` — optional AI-security learning reference
+
+The eight core source/documentation files formed the recorded scan example.
+These two HTML pages were added to the public package after recording so the
+app's reference tabs work. They were not part of the saved Strix assessment;
+the supplied scan helper continues to copy only the eight core files.
 
 ## Optional local application setup
 
 Running the application is not required for a source scan. If your instructor
 asks you to run it, use Python 3.10 or newer and a virtual environment.
-The optional architecture/security-guide HTML pages are not included in this
-source-only snapshot, so those UI pages are unavailable. The application creates
-its own local SQLite database when started; that database is not supplied here.
+The architecture and security-guide pages are included beside app.py. The
+security guide's separate lab file tree is an illustrative exercise, not extra
+files required to run NeoBank. Its optional icon font loads from a public CDN;
+the text remains usable without it. The application creates its own local SQLite
+database when started; that database is not supplied here.
 
 Windows PowerShell:
 

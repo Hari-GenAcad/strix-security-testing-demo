@@ -7,7 +7,7 @@ authorized educational security testing.
 
 ## What is included
 
-- `neobank-project/` — the sanitized source-code target
+- `neobank-project/` — the sanitized source-code target and two optional reference pages
 - `scope.txt` — safety boundaries and review areas for Strix
 - `scripts/` — a key-entry helper, scan runner, and optional Windows repair recipes
 - [Demo walkthrough](docs/DEMO_WALKTHROUGH.txt) — one file in video order
@@ -62,6 +62,13 @@ container.
 `neobank-project/` contains only the source, dependency list, and project
 documentation needed for this exercise. Environment files, real credentials,
 databases, virtual environments, caches, logs, and generated files are excluded.
+
+The recorded example used eight core files. The two optional application pages,
+`architecture.html` and `security_guide.html`, are also supplied so the app's
+reference tabs have their content. They were added to this package after the
+recording and were not assessed in the saved scan. The Windows helper still
+copies only the eight core files. A direct scan of the whole current folder
+also includes the two reference pages.
 
 The folder supplied with `--target` is made available inside a Docker container
 so Strix can inspect and test it. Treat the target as writable: keep an untouched

@@ -27,6 +27,8 @@ or successful live-model prompt injection is established by this source scan.
 The original paths D:\pentesting and /target in these records are historical.
 Use neobank-project/ for the distributed source. Its six Python/dependency files
 match the scanned snapshot; the packaged README and .gitignore were updated.
+The optional architecture.html and security_guide.html pages were added to the
+public app package after recording and are outside this saved scan's scope.
 The eight files in the original scan were verified unchanged afterward. Four
 temporary Python cache files triggered the console integrity warning and were
 later removed; they were not source edits.

@@ -265,7 +265,9 @@ For the NeoBank ARIA training project in this workspace:
   later removed.
 - The six Python/dependency files are published in neobank-project/. Its README
   and .gitignore were repackaged for students; do not assume the current package
-  is byte-for-byte identical to the historical eight-file target.
+  is byte-for-byte identical to the historical eight-file target. Optional
+  architecture.html and security_guide.html pages were added after recording
+  and were not assessed in that scan; the helper still copies eight core files.
 - Strix used its connected cloud model. Validation of NeoBank used fictional
   data and simulated application-model replies; no deployed bank was tested.
 - The run made 163 requests and reported an estimated model cost of USD 2.24.

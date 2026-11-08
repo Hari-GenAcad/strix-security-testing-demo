@@ -47,8 +47,10 @@ disposable .pyc cache files; those were removed during later cleanup.
 
 The public source is now in neobank-project/. Its six Python/dependency files
 retain the scanned content; the README and .gitignore were repackaged for readers.
-The current eight-file package is not claimed to be byte-for-byte identical to
-the historical eight-file snapshot.
+The current core files are not claimed to be byte-for-byte identical to the
+historical eight-file snapshot. Optional architecture.html and
+security_guide.html pages were added after recording and are outside the saved
+assessment scope; the helper continues to copy only the eight core files.
 
 
 3. STRIX PREPARATION AND VERIFICATION

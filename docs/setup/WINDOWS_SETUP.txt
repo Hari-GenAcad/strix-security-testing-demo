@@ -122,7 +122,7 @@ disk. Keep the configuration private and revoke keys you no longer need.
 7. REVIEW THE SUPPLIED TARGET AND SCOPE
 ---------------------------------------
 
-The public target is neobank-project/. It contains eight files:
+The public target is neobank-project/. Its eight core scan files are:
   .gitignore
   agent.py
   app.py
@@ -131,6 +131,10 @@ The public target is neobank-project/. It contains eight files:
   README.md
   requirements.txt
   seed_data.py
+
+It also includes architecture.html and security_guide.html for the optional
+application reference tabs. These were added after the video was recorded and
+were not part of the saved scan. The helper copies only the eight core files.
 
 It excludes API keys, environment files, existing databases, installed packages,
 caches, logs, and unrelated files. All NeoBank data is fictional. For another
@@ -168,8 +172,8 @@ When Docker, Strix, model access, and billing are ready:
 Paste your key at the hidden prompt. Do not enter it on camera. Model availability
 must be checked for your own account; this saved example does not guarantee it.
 
-The helper creates a fresh disposable copy under .scan-targets/ from the public
-eight-file target, records its hashes, and invokes Strix with the supplied scope.
+The helper creates a fresh disposable copy under .scan-targets/ using the eight
+core files, records its hashes, and invokes Strix with the supplied scope.
 It uses quick mode, full source scope, an estimated USD 5 budget threshold, and
 80 maximum turns per agent. It checks the source afterward.
 
