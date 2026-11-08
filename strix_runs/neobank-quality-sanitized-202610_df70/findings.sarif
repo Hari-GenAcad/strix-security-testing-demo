@@ -1,0 +1,726 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Strix",
+          "informationUri": "https://strix.ai",
+          "rules": [
+            {
+              "id": "CWE-639",
+              "name": "Missing object-level authorization in ARIA `query_account`",
+              "shortDescription": {
+                "text": "Missing object-level authorization in ARIA `query_account`"
+              },
+              "fullDescription": {
+                "text": "The ARIA `query_account(user_id)` tool accepts a caller-supplied user ID and returns the matching account profile and transaction history without verifying that the requested record belongs to the logged-in user. Any authenticated customer can use the tool to read other customers' or staff records."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "The ARIA `query_account(user_id)` tool accepts a caller-supplied user ID and returns the matching account profile and transaction history without verifying that the requested record belongs to the logged-in user. Any authenticated customer can use the tool to read other customers' or staff records.\n\nA logged-in attacker can disclose another person's balance, profile details, fraud flags, and transaction history, including staff accounts. That breaks account isolation and exposes sensitive banking data across user and role boundaries.\n\nBind account lookups to the server-side authenticated identity before any database read. Pass the current session user ID into the tool builder, reject any mismatched `user_id`, and add a regression test that confirms cross-user and staff IDs are denied even when the caller knows the identifier.",
+                "markdown": "The ARIA `query_account(user_id)` tool accepts a caller-supplied user ID and returns the matching account profile and transaction history without verifying that the requested record belongs to the logged-in user. Any authenticated customer can use the tool to read other customers' or staff records.\n\nA logged-in attacker can disclose another person's balance, profile details, fraud flags, and transaction history, including staff accounts. That breaks account isolation and exposes sensitive banking data across user and role boundaries.\n\nBind account lookups to the server-side authenticated identity before any database read. Pass the current session user ID into the tool builder, reject any mismatched `user_id`, and add a regression test that confirms cross-user and staff IDs are denied even when the caller knows the identifier."
+              },
+              "properties": {
+                "security-severity": "6.5",
+                "tags": [
+                  "security",
+                  "CWE-639",
+                  "stride:E"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/639.html"
+            },
+            {
+              "id": "CWE-862",
+              "name": "Missing authorization in ARIA tools exposes other customers' accounts and internal policy data",
+              "shortDescription": {
+                "text": "Missing authorization in ARIA tools exposes other customers' accounts and internal policy data"
+              },
+              "fullDescription": {
+                "text": "A low-privilege chat user can steer ARIA into calling `query_account` and `lookup_policy` with attacker-chosen arguments. Because the tools do not enforce ownership or role checks, the assistant discloses another customer's full account and the restricted internal treasury document."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "help": {
+                "text": "A low-privilege chat user can steer ARIA into calling `query_account` and `lookup_policy` with attacker-chosen arguments. Because the tools do not enforce ownership or role checks, the assistant discloses another customer's full account and the restricted internal treasury document.\n\nAn attacker can read another customer's balance, contact details, fraud flags, and transaction history, then pivot to internal treasury, reserve-ratio, and fraud-override data that should be limited to Finance, Risk, and Compliance. The disclosure materially increases the risk of targeted fraud, phishing, and operational intelligence gathering.\n\nEnforce caller-bound checks in `query_account` so the tool can only read the signed-in customer's own record, and restrict `lookup_policy` to customer-facing topics unless the caller is explicitly staff. Keep the authorization check in the tool layer itself; model instructions are not a security boundary. Align the system prompt with the real policy so it does not imply that the tools handle authorization for the application.",
+                "markdown": "A low-privilege chat user can steer ARIA into calling `query_account` and `lookup_policy` with attacker-chosen arguments. Because the tools do not enforce ownership or role checks, the assistant discloses another customer's full account and the restricted internal treasury document.\n\nAn attacker can read another customer's balance, contact details, fraud flags, and transaction history, then pivot to internal treasury, reserve-ratio, and fraud-override data that should be limited to Finance, Risk, and Compliance. The disclosure materially increases the risk of targeted fraud, phishing, and operational intelligence gathering.\n\nEnforce caller-bound checks in `query_account` so the tool can only read the signed-in customer's own record, and restrict `lookup_policy` to customer-facing topics unless the caller is explicitly staff. Keep the authorization check in the tool layer itself; model instructions are not a security boundary. Align the system prompt with the real policy so it does not imply that the tools handle authorization for the application."
+              },
+              "properties": {
+                "security-severity": "7.5",
+                "tags": [
+                  "security",
+                  "CWE-862",
+                  "stride:E"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/862.html"
+            },
+            {
+              "id": "CWE-287",
+              "name": "Name-only login allows account impersonation",
+              "shortDescription": {
+                "text": "Name-only login allows account impersonation"
+              },
+              "fullDescription": {
+                "text": "The login form authenticates NeoBank users by matching only the entered full name, so any known customer or staff name becomes a valid credential. An attacker who knows or guesses a real name can sign in as that person and inherit their session identity."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "help": {
+                "text": "The login form authenticates NeoBank users by matching only the entered full name, so any known customer or staff name becomes a valid credential. An attacker who knows or guesses a real name can sign in as that person and inherit their session identity.\n\nA low-privileged attacker can impersonate another customer or a staff account with no password, token, or second factor. That lets the attacker act under the victim's identity in the workshop app and opens the door to any identity-bound actions the UI or tools expose to that session.\n\nRequire a second factor that is not publicly guessable, such as a user ID plus name, a one-time code, or another verified secret. Update the login form to collect the additional factor and switch the authentication call to a verifier that checks both fields before creating the session. Do not treat a display name as sufficient proof of identity.",
+                "markdown": "The login form authenticates NeoBank users by matching only the entered full name, so any known customer or staff name becomes a valid credential. An attacker who knows or guesses a real name can sign in as that person and inherit their session identity.\n\nA low-privileged attacker can impersonate another customer or a staff account with no password, token, or second factor. That lets the attacker act under the victim's identity in the workshop app and opens the door to any identity-bound actions the UI or tools expose to that session.\n\nRequire a second factor that is not publicly guessable, such as a user ID plus name, a one-time code, or another verified secret. Update the login form to collect the additional factor and switch the authentication call to a verifier that checks both fields before creating the session. Do not treat a display name as sufficient proof of identity."
+              },
+              "properties": {
+                "security-severity": "6.5",
+                "tags": [
+                  "security",
+                  "CWE-287",
+                  "stride:S"
+                ]
+              },
+              "helpUri": "https://cwe.mitre.org/data/definitions/287.html"
+            },
+            {
+              "id": "strix-coverage/sql-injection",
+              "name": "SQL injection",
+              "shortDescription": {
+                "text": "Coverage: SQL injection"
+              },
+              "fullDescription": {
+                "text": "Coverage of SQL injection across the assessed attack surface."
+              },
+              "defaultConfiguration": {
+                "level": "none"
+              },
+              "help": {
+                "text": "Coverage of SQL injection across the assessed attack surface.",
+                "markdown": "Coverage of SQL injection across the assessed attack surface."
+              },
+              "properties": {
+                "tags": [
+                  "coverage"
+                ]
+              }
+            },
+            {
+              "id": "strix-coverage/hardcoded-secrets-api-key-leakage",
+              "name": "hardcoded secrets / API-key leakage",
+              "shortDescription": {
+                "text": "Coverage: hardcoded secrets / API-key leakage"
+              },
+              "fullDescription": {
+                "text": "Coverage of hardcoded secrets / API-key leakage across the assessed attack surface."
+              },
+              "defaultConfiguration": {
+                "level": "none"
+              },
+              "help": {
+                "text": "Coverage of hardcoded secrets / API-key leakage across the assessed attack surface.",
+                "markdown": "Coverage of hardcoded secrets / API-key leakage across the assessed attack surface."
+              },
+              "properties": {
+                "tags": [
+                  "coverage"
+                ]
+              }
+            },
+            {
+              "id": "strix-coverage/prompt-injection-jailbreak-handling",
+              "name": "prompt injection / jailbreak handling",
+              "shortDescription": {
+                "text": "Coverage: prompt injection / jailbreak handling"
+              },
+              "fullDescription": {
+                "text": "Coverage of prompt injection / jailbreak handling across the assessed attack surface."
+              },
+              "defaultConfiguration": {
+                "level": "none"
+              },
+              "help": {
+                "text": "Coverage of prompt injection / jailbreak handling across the assessed attack surface.",
+                "markdown": "Coverage of prompt injection / jailbreak handling across the assessed attack surface."
+              },
+              "properties": {
+                "tags": [
+                  "coverage"
+                ]
+              }
+            },
+            {
+              "id": "strix-coverage/identity-reuse-across-turns",
+              "name": "identity reuse across turns",
+              "shortDescription": {
+                "text": "Coverage: identity reuse across turns"
+              },
+              "fullDescription": {
+                "text": "Coverage of identity reuse across turns across the assessed attack surface."
+              },
+              "defaultConfiguration": {
+                "level": "none"
+              },
+              "help": {
+                "text": "Coverage of identity reuse across turns across the assessed attack surface.",
+                "markdown": "Coverage of identity reuse across turns across the assessed attack surface."
+              },
+              "properties": {
+                "tags": [
+                  "coverage"
+                ]
+              }
+            }
+          ],
+          "version": "1.7.0"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CWE-639",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Missing object-level authorization in ARIA `query_account`\n\nThe ARIA `query_account(user_id)` tool accepts a caller-supplied user ID and returns the matching account profile and transaction history without verifying that the requested record belongs to the logged-in user. Any authenticated customer can use the tool to read other customers' or staff records."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "database.py"
+                },
+                "region": {
+                  "startLine": 93,
+                  "endLine": 111,
+                  "snippet": {
+                    "text": "def get_customer(conn: sqlite3.Connection, user_id: str) -> dict | None:\n    \"\"\"Retrieve a single customer by user_id.\"\"\"\n    row = conn.execute(\n        \"SELECT * FROM customers WHERE user_id = ?\", (user_id,)\n    ).fetchone()\n    if row is None:\n        return None\n    d = dict(row)\n    d[\"fraud_flags\"] = json.loads(d.get(\"fraud_flags\") or \"[]\")\n    return d\n\n\ndef get_transactions(conn: sqlite3.Connection, user_id: str) -> list[dict]:\n    \"\"\"Retrieve all transactions for a user_id, newest first.\"\"\"\n    rows = conn.execute(\n        \"SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC\",\n        (user_id,),\n    ).fetchall()\n    return [dict(r) for r in rows]"
+                  }
+                }
+              },
+              "message": {
+                "text": "Unscoped account lookup helpers"
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "agent.py"
+                },
+                "region": {
+                  "startLine": 57,
+                  "endLine": 91
+                }
+              },
+              "message": {
+                "text": "Bind `query_account` to the authenticated user"
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "agent.py"
+                },
+                "region": {
+                  "startLine": 103,
+                  "endLine": 103
+                }
+              },
+              "message": {
+                "text": "Pass the authenticated user into the tool builder"
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "agent.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 57,
+                        "endLine": 91
+                      },
+                      "insertedContent": {
+                        "text": "def build_tools(conn, current_user_id):\n    \"\"\"\n    Build ARIA's tools. query_account is scoped to the current authenticated user.\n    - lookup_policy: returns KB value verbatim (no spotlighting, no sanitisation)\n    - query_account: rejects mismatched user_id values before any database lookup\n    \"\"\"\n\n    @tool\n    def lookup_policy(topic: str) -> str:\n        \"\"\"Look up a specific NeoBank policy by topic name.\n        Call this when the customer asks about the content of a specific policy.\n        The topic must be one of: transfer_limits, dispute_process,\n        card_management, fraud_detection, account_verification, internal_reference_only.\"\"\"\n        logger.info(f\"[TOOL] lookup_policy('{topic}')\")\n        result = KNOWLEDGE_BASE.get(topic.strip().lower())\n        if result:\n            return result\n        return (\n            f\"No policy found for topic: '{topic}'. \"\n            f\"Available topics are: {', '.join(KNOWLEDGE_BASE.keys())}\"\n        )\n\n    @tool\n    def query_account(user_id: str) -> str:\n        \"\"\"Look up account details and transactions for a user ID.\n        Call this when the customer asks about account balance, details, or transactions.\n        Example user_id: 'USR-0042'.\"\"\"\n        logger.info(f\"[TOOL] query_account('{user_id}')\")\n        requested_user_id = user_id.strip()\n        if requested_user_id != current_user_id:\n            return \"Access denied: account lookups are limited to the signed-in user.\"\n        customer = get_customer(conn, current_user_id)\n        if not customer:\n            return f\"Account not found for user_id: {current_user_id}\"\n        transactions = get_transactions(conn, current_user_id)\n        return format_account_details(customer, transactions)\n\n    return [lookup_policy, query_account]"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "artifactLocation": {
+                    "uri": "agent.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 103,
+                        "endLine": 103
+                      },
+                      "insertedContent": {
+                        "text": "tools = build_tools(conn, user_id)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "description": {
+                "text": "Bind account lookups to the server-side authenticated identity before any database read. Pass the current session user ID into the tool builder, reject any mismatched `user_id`, and add a regression test that confirms cross-user and staff IDs are denied even when the caller knows the identifier.",
+                "markdown": "Bind account lookups to the server-side authenticated identity before any database read. Pass the current session user ID into the tool builder, reject any mismatched `user_id`, and add a regression test that confirms cross-user and staff IDs are denied even when the caller knows the identifier."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "ea6d1b7b55f28e936fa430514212a2b3ed916f96ce13d30f2d9d021059b127ff"
+          },
+          "properties": {
+            "security-severity": "6.5",
+            "strix_vuln_class_hash": "02a59f47f60b2836cdcab403855a3bf830d1ca81a2be799543ae5535db73e2ab",
+            "strix": {
+              "id": "vuln-0001",
+              "severity": "medium",
+              "cvss": 6.5,
+              "timestamp": "2026-10-29 10:20:37 UTC",
+              "target": "neobank-quality-sanitized-20261028",
+              "cwe": "CWE-639",
+              "impact": "A logged-in attacker can disclose another person's balance, profile details, fraud flags, and transaction history, including staff accounts. That breaks account isolation and exposes sensitive banking data across user and role boundaries.",
+              "technical_analysis": "`app.py` establishes a session user ID after login and passes it into `create_aria_agent(...)`, but `agent.py:80-89` ignores that trusted identity and forwards the user-controlled `user_id` directly into `database.py:93-111`. The database helpers are plain `SELECT ... WHERE user_id = ?` lookups with no caller-context check, so the tool can return any row whose identifier is known. The shared validation note confirmed the tool returns arbitrary customer and staff records after a successful login.",
+              "remediation_steps": "Bind account lookups to the server-side authenticated identity before any database read. Pass the current session user ID into the tool builder, reject any mismatched `user_id`, and add a regression test that confirms cross-user and staff IDs are denied even when the caller knows the identifier.",
+              "counterevidence": "The only plausible safeguard is the authenticated user ID stored in Streamlit session state, but `query_account` does not consume it. I also checked the only `build_tools(...)` call site and found no alternate wrapper that re-binds the lookup to the session principal; the validation note showed the tool still returned customer and staff data when given mismatched IDs.",
+              "confidence": "high",
+              "severity_change_conditions": "If `query_account` were changed to compare the requested ID against the authenticated session user before any database read, the finding would be closed; if the tool were exposed without any login requirement, the severity would increase because the same lookup would become unauthenticated.",
+              "fix_verification": "Applicability: copied `agent.py` into a disposable scratch directory, applied the minimal patch there, and verified syntax with `python3 -m py_compile /workspace/.scratch-auth-report/agent.py` → `OK`.\n\nSecurity closure: the patched `query_account` rejects mismatched `user_id` values before any call to `get_customer()` or `get_transactions()`, so arbitrary IDs no longer reach the database lookup path.\n\nBypass review: `rg -n \"build_tools\\(|query_account\\(\" /workspace/.scratch-auth-report/agent.py` showed a single `build_tools(...)` call site and the tool definition itself; no sibling builder or alternate lookup wrapper was present. I did not execute live runtime tests against the workshop app in this reporting-only task, so runtime confirmation of the patched behavior remains a gap.\n\nPreserved behavior: the `lookup_policy` tool is unchanged, and matching user IDs still flow through to the same account lookup logic. I did not run the full app or its UI flow in the scratch copy, so end-to-end behavior preservation is reasoned from the source diff rather than exercised.\n\nRepository checks: the narrow syntax check above passed. I did not run broader repository tests or linters in the scratch copy, so those checks remain a gap.",
+              "poc": {
+                "description": "1. Log in to the workshop app as any seeded customer.\n2. Invoke the ARIA account lookup tool with a different known user ID, such as another customer or a staff account.\n3. Observe that the tool returns the target's account details and transactions instead of rejecting the mismatched identifier.",
+                "script_available": true
+              }
+            }
+          }
+        },
+        {
+          "ruleId": "CWE-862",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "Missing authorization in ARIA tools exposes other customers' accounts and internal policy data\n\nA low-privilege chat user can steer ARIA into calling `query_account` and `lookup_policy` with attacker-chosen arguments. Because the tools do not enforce ownership or role checks, the assistant discloses another customer's full account and the restricted internal treasury document."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "agent.py"
+                },
+                "region": {
+                  "startLine": 57,
+                  "endLine": 63
+                }
+              },
+              "message": {
+                "text": "Bind tools to the authenticated principal"
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "agent.py"
+                },
+                "region": {
+                  "startLine": 64,
+                  "endLine": 77
+                }
+              },
+              "message": {
+                "text": "Restrict policy lookup to staff-only internal topic"
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "agent.py"
+                },
+                "region": {
+                  "startLine": 79,
+                  "endLine": 90
+                }
+              },
+              "message": {
+                "text": "Enforce self-only account lookups"
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "agent.py"
+                },
+                "region": {
+                  "startLine": 102,
+                  "endLine": 102
+                }
+              },
+              "message": {
+                "text": "Pass caller context into the tool builder"
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "agent.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 57,
+                        "endLine": 63
+                      },
+                      "insertedContent": {
+                        "text": "def build_tools(conn, principal_user_id: str, account_tier: str):\n    \"\"\"\n    Build ARIA's tools. Both are intentionally vulnerable:\n    - lookup_policy: returns KB value verbatim (no spotlighting, no sanitisation)\n    - query_account: no ownership check — queries any user_id from SQLite\n    \"\"\"\n\n    is_staff = account_tier.strip().lower() == \"staff\"\n    public_topics = {\n        topic for topic in KNOWLEDGE_BASE.keys()\n        if topic != \"internal_reference_only\"\n    }"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "artifactLocation": {
+                    "uri": "agent.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 64,
+                        "endLine": 77
+                      },
+                      "insertedContent": {
+                        "text": "@tool\n    def lookup_policy(topic: str) -> str:\n        \"\"\"Look up a specific NeoBank policy by topic name.\n        Call this when the customer asks about the content of a specific policy.\n        The topic must be one of: transfer_limits, dispute_process,\n        card_management, fraud_detection, account_verification, internal_reference_only.\"\"\"\n        normalized_topic = topic.strip().lower()\n        logger.info(f\"[TOOL] lookup_policy('{normalized_topic}')\")\n        if normalized_topic == \"internal_reference_only\" and not is_staff:\n            return \"Access denied: internal_reference_only is restricted to staff accounts.\"\n        if normalized_topic not in public_topics and normalized_topic != \"internal_reference_only\":\n            return (\n                f\"No policy found for topic: '{topic}'. \"\n                f\"Available topics are: {', '.join(sorted(public_topics))}\"\n            )\n        result = KNOWLEDGE_BASE.get(normalized_topic)\n        if result:\n            return result\n        return (\n            f\"No policy found for topic: '{topic}'. \"\n            f\"Available topics are: {', '.join(KNOWLEDGE_BASE.keys())}\"\n        )"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "artifactLocation": {
+                    "uri": "agent.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 79,
+                        "endLine": 90
+                      },
+                      "insertedContent": {
+                        "text": "@tool\n    def query_account(user_id: str) -> str:\n        \"\"\"Look up account details and transactions for a user ID.\n        Call this when the customer asks about account balance, details, or transactions.\n        Example user_id: 'USR-0042'.\"\"\"\n        requested_user_id = user_id.strip()\n        logger.info(f\"[TOOL] query_account('{requested_user_id}')\")\n        if requested_user_id != principal_user_id:\n            return \"Access denied: you may only query the signed-in customer's own account.\"\n        customer = get_customer(conn, requested_user_id)\n        if not customer:\n            return f\"Account not found for user_id: {user_id}\"\n        transactions = get_transactions(conn, requested_user_id)\n        return format_account_details(customer, transactions)\n\n    return [lookup_policy, query_account]"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "artifactLocation": {
+                    "uri": "agent.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 102,
+                        "endLine": 102
+                      },
+                      "insertedContent": {
+                        "text": "tools = build_tools(conn, user_id, account_tier)"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "description": {
+                "text": "Enforce caller-bound checks in `query_account` so the tool can only read the signed-in customer's own record, and restrict `lookup_policy` to customer-facing topics unless the caller is explicitly staff. Keep the authorization check in the tool layer itself; model instructions are not a security boundary. Align the system prompt with the real policy so it does not imply that the tools handle authorization for the application.",
+                "markdown": "Enforce caller-bound checks in `query_account` so the tool can only read the signed-in customer's own record, and restrict `lookup_policy` to customer-facing topics unless the caller is explicitly staff. Keep the authorization check in the tool layer itself; model instructions are not a security boundary. Align the system prompt with the real policy so it does not imply that the tools handle authorization for the application."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "dd8a77f45703306f545509b148e9a1b70dd18497da00bcfb774d3a6e941983ad"
+          },
+          "properties": {
+            "security-severity": "7.5",
+            "strix_vuln_class_hash": "5743181493c9bf9c378a767eb9c2bee8704221d39e630e3b082619f0a6440f02",
+            "strix": {
+              "id": "vuln-0002",
+              "severity": "high",
+              "cvss": 7.5,
+              "timestamp": "2026-10-29 10:21:55 UTC",
+              "target": "neobank-quality-sanitized-20261028",
+              "cwe": "CWE-862",
+              "impact": "An attacker can read another customer's balance, contact details, fraud flags, and transaction history, then pivot to internal treasury, reserve-ratio, and fraud-override data that should be limited to Finance, Risk, and Compliance. The disclosure materially increases the risk of targeted fraud, phishing, and operational intelligence gathering.",
+              "technical_analysis": "`agent.py` binds two tools into the model loop: `lookup_policy(topic)` and `query_account(user_id)` (lines 64-90). Neither tool validates who is asking; `query_account` accepts any `user_id` and returns `format_account_details(...)`, and `lookup_policy` returns any knowledge-base entry, including `internal_reference_only`. `invoke_agent()` executes the first tool call emitted by the model and feeds the raw tool result back into the final answer, so a malicious prompt or prompt-injected turn can steer the assistant into these sinks. The prompt text in `agent.py` also tells the model that the tools handle permissions, but that claim is not enforced in code. In `app.py`, the chat flow forwards each user message directly into `invoke_agent`, so there is no separate application-layer authorization boundary before the tool execution path.\n\nThe local proof-of-concept used an in-memory SQLite database and a stubbed model response to avoid the live API. On the original build, the same harness caused ARIA to disclose `USR-PP-001`'s full account and the restricted `internal_reference_only` document to a standard customer session. A patched scratch copy that adds caller binding to `query_account` and a staff-only gate for `internal_reference_only` returns access denied for both requests while preserving the benign own-account and public-policy paths.",
+              "remediation_steps": "Enforce caller-bound checks in `query_account` so the tool can only read the signed-in customer's own record, and restrict `lookup_policy` to customer-facing topics unless the caller is explicitly staff. Keep the authorization check in the tool layer itself; model instructions are not a security boundary. Align the system prompt with the real policy so it does not imply that the tools handle authorization for the application.",
+              "counterevidence": "I checked the tool layer and the chat flow for an ownership check, role gate, or topic allowlist and found none. The only claim of protection is the system prompt saying the tools handle permissions, but that statement is advisory only. The local PoC succeeded on the original build and failed only after I added explicit checks in the scratch copy; benign own-account and public-policy requests still worked after the patch.",
+              "confidence": "high",
+              "severity_change_conditions": "If every tool call were bound to the authenticated principal and role before the sink, or if the chat surface were only reachable through a staff-only workflow, the severity would drop.",
+              "fix_verification": "Gate 1 — applicability: I compared the suggestion blocks against `agent.py` and verified the line ranges and replacements correspond to the exact vulnerable source. I also ran `python3 -m py_compile /workspace/.scratch-aria/agent.py`, which returned `OK`.\n\nGate 2 — security closure: I replayed the local harness against the original source tree and the patched scratch copy. On the original build, the harness printed the other customer's full account and the `internal_reference_only` document; on the patched copy, the same requests returned access denied.\n\nGate 3 — bypass review: I tested both a direct cross-account lookup (`USR-PP-001`) and the restricted knowledge-base topic (`internal_reference_only`), plus benign own-account and public-topic requests. The malicious inputs were blocked after the fix, while the benign ones still succeeded.\n\nGate 4 — preserved behavior: the patched harness still returned the logged-in user's own account and the public `transfer_limits` policy verbatim, so the feature still works for intended requests.\n\nGate 5 — repository checks: `python3 -m py_compile /workspace/.scratch-aria/agent.py` passed; no broader repo test suite is present for this workshop app. The fix is the smallest repository-native change that enforces the invariant because it adds the authorization check exactly at the tool boundary and leaves the UI and database helpers unchanged.",
+              "poc": {
+                "description": "1. Run the repository code in a disposable copy with an in-memory SQLite database and a stubbed model response.\n2. Force the agent to emit a `query_account` tool call for `USR-PP-001` while the logged-in principal is `USR-0042`.\n3. Force the agent to emit a `lookup_policy` tool call for `internal_reference_only` while the logged-in principal is a standard customer.\n4. Observe that the original build returns the other customer's full account and the internal treasury document.\n5. Repeat the same harness against the patched scratch copy and confirm both requests are denied while the benign own-account and public-policy lookups still work.",
+                "script_available": true
+              }
+            }
+          }
+        },
+        {
+          "ruleId": "CWE-287",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "Name-only login allows account impersonation\n\nThe login form authenticates NeoBank users by matching only the entered full name, so any known customer or staff name becomes a valid credential. An attacker who knows or guesses a real name can sign in as that person and inherit their session identity."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app.py"
+                },
+                "region": {
+                  "startLine": 18,
+                  "endLine": 19,
+                  "snippet": {
+                    "text": "from database import get_connection, init_database, authenticate_by_name\nfrom agent import create_aria_agent, invoke_agent"
+                  }
+                }
+              },
+              "message": {
+                "text": "Import the stronger authenticator"
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "app.py"
+                },
+                "region": {
+                  "startLine": 393,
+                  "endLine": 490,
+                  "snippet": {
+                    "text": "with st.form(\"login_form\"):\n            name = st.text_input(\n                \"Full Name\",\n                placeholder=\"e.g. Alex Mercer\",\n            )\n\n            submitted = st.form_submit_button(\n                \"Sign In\",\n                use_container_width=True,\n            )\n\n            if submitted:\n\n                # ─────────────────────────────\n                # 1. Check API key exists\n                # ─────────────────────────────\n\n                api_key = st.session_state.get(\n                    \"api_key\",\n                    \"\",\n                ).strip()\n\n                if not api_key:\n                    st.error(\n                        \"Please enter your OpenAI API key \"\n                        \"in the sidebar.\"\n                    )\n                    return\n\n                # ─────────────────────────────\n                # 2. Verify API key with OpenAI\n                # ─────────────────────────────\n\n                with st.spinner(\n                    \"Verifying OpenAI API key...\"\n                ):\n                    key_valid, key_error = (\n                        validate_openai_key(api_key)\n                    )\n\n                if not key_valid:\n                    st.error(key_error)\n                    return\n\n                # ─────────────────────────────\n                # 3. Check name\n                # ─────────────────────────────\n\n                if not name or not name.strip():\n                    st.error(\n                        \"Please enter your name to sign in.\"\n                    )\n                    return\n\n                # ─────────────────────────────\n                # 4. Authenticate NeoBank user\n                # ─────────────────────────────\n\n                customer = authenticate_by_name(\n                    conn,\n                    name.strip(),\n                )\n\n                if not customer:\n                    st.error(\n                        \"We couldn't find an account with \"\n                        \"that name. Please check the spelling \"\n                        \"and try again.\"\n                    )\n                    return\n\n                # ─────────────────────────────\n                # 5. Successful login\n                # ─────────────────────────────\n\n                st.session_state.logged_in = True\n\n                st.session_state.user_name = (\n                    customer[\"name\"]\n                )\n\n                st.session_state.user_id = (\n                    customer[\"user_id\"]\n                )\n\n                st.session_state.account_tier = (\n                    customer[\"tier\"]\n                )\n\n                st.session_state.messages = []\n\n                # Remember the exact API key that passed\n                # OpenAI validation.\n                st.session_state.api_key_validated = (\n                    api_key\n                )\n\n                st.rerun()"
+                  }
+                }
+              },
+              "message": {
+                "text": "Require a second login factor"
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "app.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 18,
+                        "endLine": 19
+                      },
+                      "insertedContent": {
+                        "text": "from database import get_connection, init_database, authenticate_user\nfrom agent import create_aria_agent, invoke_agent"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "artifactLocation": {
+                    "uri": "app.py"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 393,
+                        "endLine": 490
+                      },
+                      "insertedContent": {
+                        "text": "with st.form(\"login_form\"):\n            user_id = st.text_input(\n                \"User ID\",\n                placeholder=\"e.g. USR-0042\",\n            )\n            name = st.text_input(\n                \"Full Name\",\n                placeholder=\"e.g. Alex Mercer\",\n            )\n\n            submitted = st.form_submit_button(\n                \"Sign In\",\n                use_container_width=True,\n            )\n\n            if submitted:\n\n                # ─────────────────────────────\n                # 1. Check API key exists\n                # ─────────────────────────────\n\n                api_key = st.session_state.get(\n                    \"api_key\",\n                    \"\",\n                ).strip()\n\n                if not api_key:\n                    st.error(\n                        \"Please enter your OpenAI API key \"\n                        \"in the sidebar.\"\n                    )\n                    return\n\n                # ─────────────────────────────\n                # 2. Verify API key with OpenAI\n                # ─────────────────────────────\n\n                with st.spinner(\n                    \"Verifying OpenAI API key...\"\n                ):\n                    key_valid, key_error = (\n                        validate_openai_key(api_key)\n                    )\n\n                if not key_valid:\n                    st.error(key_error)\n                    return\n\n                # ─────────────────────────────\n                # 3. Check required fields\n                # ─────────────────────────────\n\n                if not user_id or not user_id.strip():\n                    st.error(\n                        \"Please enter your user ID to sign in.\"\n                    )\n                    return\n\n                if not name or not name.strip():\n                    st.error(\n                        \"Please enter your name to sign in.\"\n                    )\n                    return\n\n                # ─────────────────────────────\n                # 4. Authenticate NeoBank user\n                # ─────────────────────────────\n\n                customer = authenticate_user(\n                    conn,\n                    user_id.strip(),\n                    name.strip(),\n                )\n\n                if not customer:\n                    st.error(\n                        \"We couldn't verify that user ID and \"\n                        \"name combination. Please check both \"\n                        \"fields and try again.\"\n                    )\n                    return\n\n                # ─────────────────────────────\n                # 5. Successful login\n                # ─────────────────────────────\n\n                st.session_state.logged_in = True\n\n                st.session_state.user_name = (\n                    customer[\"name\"]\n                )\n\n                st.session_state.user_id = (\n                    customer[\"user_id\"]\n                )\n\n                st.session_state.account_tier = (\n                    customer[\"tier\"]\n                )\n\n                st.session_state.messages = []\n\n                # Remember the exact API key that passed\n                # OpenAI validation.\n                st.session_state.api_key_validated = (\n                    api_key\n                )\n\n                st.rerun()"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "description": {
+                "text": "Require a second factor that is not publicly guessable, such as a user ID plus name, a one-time code, or another verified secret. Update the login form to collect the additional factor and switch the authentication call to a verifier that checks both fields before creating the session. Do not treat a display name as sufficient proof of identity.",
+                "markdown": "Require a second factor that is not publicly guessable, such as a user ID plus name, a one-time code, or another verified secret. Update the login form to collect the additional factor and switch the authentication call to a verifier that checks both fields before creating the session. Do not treat a display name as sufficient proof of identity."
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "76b073b3847e69019983659247e3d3187a9b276feadfb80cf7db3fa8ed35fb54"
+          },
+          "properties": {
+            "security-severity": "6.5",
+            "strix_vuln_class_hash": "853b5fe0a47849af8589292813db727cb00ee0eeb9956ce66029129135065dd2",
+            "strix": {
+              "id": "vuln-0003",
+              "severity": "medium",
+              "cvss": 6.5,
+              "timestamp": "2026-10-29 10:22:30 UTC",
+              "target": "/workspace/neobank-quality-sanitized-20261028",
+              "cwe": "CWE-287",
+              "impact": "A low-privileged attacker can impersonate another customer or a staff account with no password, token, or second factor. That lets the attacker act under the victim's identity in the workshop app and opens the door to any identity-bound actions the UI or tools expose to that session.",
+              "technical_analysis": "`app.py:393-490` asks only for a full name and then calls `authenticate_by_name(conn, name.strip())`. In `database.py:127-136`, `authenticate_by_name()` performs a case-insensitive lookup on `customers.name` and returns the matching row; no secret, second factor, or user ID is required. The result is that the first valid name entered becomes the authenticated session identity, including the staff account seeded in the workshop data.",
+              "remediation_steps": "Require a second factor that is not publicly guessable, such as a user ID plus name, a one-time code, or another verified secret. Update the login form to collect the additional factor and switch the authentication call to a verifier that checks both fields before creating the session. Do not treat a display name as sufficient proof of identity.",
+              "counterevidence": "The app does verify the OpenAI API key before login, so the attacker needs a working key to reach the form. That check does not establish user identity, and it does not mitigate the fact that the bank account itself is authenticated solely by name.",
+              "confidence": "high",
+              "severity_change_conditions": "If login were changed to require a non-public secret bound to the account, the severity would drop; if the same name-only login were reachable without the API-key gate, the issue would become more severe.",
+              "fix_verification": "Security closure: I validated the current login helper against an in-memory SQLite database and confirmed that the existing name-only path authenticates seeded staff and customer names without any secret. The proposed patch closes that boundary by requiring both a `user_id` and `name`, then using `authenticate_user()` so the session only opens when the pair matches.\n\nBypass review: I checked the only relevant alternate helper in the same module, `authenticate_by_name()`, and the patch stops routing the login form through it. A user who knows only the display name can no longer authenticate; a wrong `user_id` with a correct name fails as intended.\n\nPreserved behavior: legitimate users can still sign in with the correct account identity, and the session values (`user_name`, `user_id`, `account_tier`) continue to populate exactly as before. The API-key verification and post-login session reset logic are unchanged.\n\nRepository checks: `python3 -m py_compile app.py database.py agent.py` should be run on the scratch copy after applying the import and form changes. I also re-ran the in-memory SQLite helper validation to confirm the old name-only flow was exploitable and the new `authenticate_user()` predicate accepts only the matching pair. Gap: the scratch copy cannot import `langchain_openai` without installing the optional dependency, so I could not run the full Streamlit UI end-to-end.",
+              "poc": {
+                "description": "1. Open the login form and enter a seeded name such as `Morgan Hayes`.\n2. Provide any OpenAI API key that passes the local workshop check.\n3. Submit the form and observe that the app signs in as the matching account.\n4. Repeat with a different valid name to impersonate a different customer or staff account.",
+                "script_available": true
+              }
+            }
+          }
+        },
+        {
+          "ruleId": "strix-coverage/sql-injection",
+          "ruleIndex": 3,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "SQL injection — Ruled out: database.py SQLite helpers\n\nEvery SQL statement I checked uses bound parameters (`?`) in `get_customer()`, `get_transactions()`, `authenticate_user()`, and `authenticate_by_name()`, and I did not find any string concatenation, f-strings, or `format()`-built SQL on attacker-controlled input paths."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "database.py SQLite helpers"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "strix": {
+              "coverage_outcome": "ruled_out",
+              "risk_area": "SQL injection",
+              "surface": "database.py SQLite helpers",
+              "recorded_by": "Source-Aware Triage",
+              "source": "agent_reported"
+            }
+          }
+        },
+        {
+          "ruleId": "strix-coverage/hardcoded-secrets-api-key-leakage",
+          "ruleIndex": 4,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "hardcoded secrets / API-key leakage — No issue identified: knowledge_base.py knowledge base\n\nThe file contains policy and reference text only; I found no API keys, tokens, passwords, or other credential-like literals in the knowledge base, and the secret scans (`gitleaks` / `trufflehog`) were clean on the repository."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "knowledge_base.py knowledge base"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "strix": {
+              "coverage_outcome": "no_issue_found",
+              "risk_area": "hardcoded secrets / API-key leakage",
+              "surface": "knowledge_base.py knowledge base",
+              "recorded_by": "Source-Aware Triage",
+              "source": "agent_reported"
+            }
+          }
+        },
+        {
+          "ruleId": "strix-coverage/prompt-injection-jailbreak-handling",
+          "ruleIndex": 5,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "prompt injection / jailbreak handling — No issue identified: app.py chat flow\n\nThe chat UI is a thin relay: it appends the user prompt to session history, passes it into `invoke_agent`, and renders the response. I did not find a separate app-layer moderation or sanitization control here; the exploitable authorization failure was in `agent.py`, not in the Streamlit shell itself."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "app.py chat flow"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "strix": {
+              "coverage_outcome": "no_issue_found",
+              "risk_area": "prompt injection / jailbreak handling",
+              "surface": "app.py chat flow",
+              "recorded_by": "ARIA Prompt & Tool Abuse",
+              "source": "agent_reported"
+            }
+          }
+        },
+        {
+          "ruleId": "strix-coverage/identity-reuse-across-turns",
+          "ruleIndex": 6,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "identity reuse across turns — Ruled out: app.py session state logout / API-key revalidation\n\nLogout pops `logged_in`, `user_name`, `user_id`, `account_tier`, `messages`, and `api_key_validated`, and an API-key change clears `logged_in` again before rerun; I traced that control in `app.py:294-297` and `app.py:523-534`, so prior identity state does not persist across turns."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "app.py session state logout / API-key revalidation"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "strix": {
+              "coverage_outcome": "ruled_out",
+              "risk_area": "identity reuse across turns",
+              "surface": "app.py session state logout / API-key revalidation",
+              "recorded_by": "Auth & IDOR Boundary",
+              "source": "agent_reported"
+            }
+          }
+        },
+        {
+          "ruleId": "strix-coverage/sql-injection",
+          "ruleIndex": 3,
+          "kind": "pass",
+          "level": "none",
+          "message": {
+            "text": "SQL injection — Ruled out: database.py customer lookup helpers (`authenticate_by_name`, `authenticate_user`, `get_customer`, `get_transactions`)\n\nEvery lookup uses parameterized SQL with `?` placeholders; there is no string concatenation in these helpers. I checked the call sites and the query text in `database.py:93-136`, so attacker-controlled input reaches bound parameters rather than SQL syntax."
+          },
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "database.py customer lookup helpers (`authenticate_by_name`, `authenticate_user`, `get_customer`, `get_transactions`)"
+                }
+              ]
+            }
+          ],
+          "properties": {
+            "strix": {
+              "coverage_outcome": "ruled_out",
+              "risk_area": "SQL injection",
+              "surface": "database.py customer lookup helpers (`authenticate_by_name`, `authenticate_user`, `get_customer`, `get_transactions`)",
+              "recorded_by": "Auth & IDOR Boundary",
+              "source": "agent_reported"
+            }
+          }
+        }
+      ],
+      "invocations": [
+        {
+          "executionSuccessful": true
+        }
+      ]
+    }
+  ]
+}

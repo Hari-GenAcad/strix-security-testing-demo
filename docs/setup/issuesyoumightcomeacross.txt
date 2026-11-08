@@ -1,0 +1,557 @@
+STRIX ON WINDOWS: ISSUES YOU MIGHT COME ACROSS
+==============================================
+
+Updated for publication: 8 November 2026
+Observed trial: 28-29 October 2026. Versions and provider quotas can change.
+
+This file records the setup and scan problems encountered during the NeoBank
+Strix trial, their symptoms, confirmed causes where known, and safe recovery
+steps. Do not apply a repair merely because a symptom looks similar. Confirm the
+actual cause first and preserve existing projects, images, volumes, credentials,
+and backups.
+
+
+1. NOT ENOUGH SPACE ON THE WINDOWS SYSTEM DRIVE
+-----------------------------------------------
+
+Symptoms:
+
+- WSL or Docker updates fail unexpectedly.
+- Docker cannot start or import a large image.
+- Temporary extraction fails even though another drive has free space.
+- Windows becomes unstable under memory pressure.
+- A large download appears to fit on D: but tools still use C: for temporary
+  files, installer caches, or application data.
+
+What happened here:
+
+The system drive had almost no free space while D: had substantial capacity.
+Docker, WSL, Windows, and archive extraction still needed working room on C:.
+
+Resolution used:
+
+- A large unrelated ZIP was moved, not deleted, to another drive.
+- Docker application/data and Strix temporary paths were placed on D: where
+  supported.
+- Several gigabytes were left available on C: for Windows and installer work.
+
+Checks:
+
+  [System.IO.DriveInfo]::GetDrives() |
+    Where-Object { $_.Name -in @('C:\','D:\') } |
+    ForEach-Object { '{0} free={1:N2} GB' -f $_.Name, ($_.AvailableFreeSpace / 1GB) }
+
+Important:
+
+- Do not delete unknown user files to create space.
+- Moving Docker data or WSL distributions requires Docker/Microsoft-supported
+  procedures; do not manually move their internal virtual disks while running.
+- A Strix sandbox image can require several gigabytes plus temporary working
+  space.
+
+
+2. WINDOWS VIRTUAL MEMORY OR PAGEFILE IS TOO SMALL
+--------------------------------------------------
+
+Symptoms:
+
+- Docker's Linux VM stops while loading or unpacking a large image.
+- Windows reports low virtual memory.
+- Docker/WSL crashes despite available disk space.
+- Image imports repeatedly fail at different stages.
+
+What happened here:
+
+Windows had insufficient available virtual memory for the Docker/WSL workload.
+A pagefile configuration existed for D:, but the D: pagefile was not initially
+active in Win32_PageFileUsage.
+
+Configuration used on this machine:
+
+  C:\pagefile.sys  initial 1024 MB, maximum 2048 MB
+  D:\pagefile.sys  initial 8192 MB, maximum 16384 MB
+
+These values are machine-specific examples, not universal requirements.
+
+Check active pagefiles:
+
+  Get-CimInstance Win32_PageFileUsage |
+    Select-Object Name, AllocatedBaseSize, CurrentUsage
+
+Check saved settings:
+
+  Get-CimInstance Win32_PageFileSetting |
+    Select-Object Name, InitialSize, MaximumSize
+
+Saved configuration does not prove that a pagefile is active. After changing
+virtual-memory settings through Windows Advanced System Settings, restart and
+check Win32_PageFileUsage again.
+
+Keep your own pre-change record before adjusting virtual-memory settings.
+The author's local diagnostic records are not a prerequisite for this exercise.
+
+
+3. WSL IS MISSING, OUTDATED, OR NOT USING VERSION 2
+---------------------------------------------------
+
+Symptoms:
+
+- Docker Desktop cannot start its Linux backend.
+- `wsl --version` fails.
+- A distribution is listed as version 1.
+- Docker repeatedly reports that its WSL backend is unavailable.
+
+Checks:
+
+  wsl --version
+  wsl --status
+  wsl --list --verbose
+
+Install from Administrator PowerShell when WSL is missing:
+
+  wsl --install --no-distribution
+
+Update WSL:
+
+  wsl --update
+
+Restart when Windows requests it. Docker Desktop should use the WSL 2 Linux
+backend.
+
+Avoid:
+
+- Repeatedly reinstalling WSL without reading the current error.
+- Unregistering Docker's WSL data distribution as a routine repair; that can
+  remove Docker data.
+
+
+4. DOCKER CLIENT EXISTS BUT THE ENGINE IS NOT RUNNING
+-----------------------------------------------------
+
+Symptoms:
+
+- `docker --version` succeeds but `docker info` fails.
+- Strix says the Docker daemon is unreachable.
+- No sandbox container can be created.
+
+Checks:
+
+  docker context ls
+  docker context use desktop-linux
+  docker info
+  docker run --rm hello-world
+
+Resolution:
+
+- Start Docker Desktop.
+- Wait for the Linux engine to report ready.
+- Select the desktop-linux context.
+- Verify with hello-world before starting Strix.
+
+
+5. DOCKER STARTUP BLOCKED BY A STALE IPC SOCKET
+-----------------------------------------------
+
+Symptoms encountered:
+
+- Docker Desktop repeatedly failed during startup.
+- Logs reported that a secrets-engine socket could not be renamed to a stale
+  name and returned Windows error 1920.
+- The path appeared as a zero-byte reparse-point socket:
+
+    C:\Users\<user>\AppData\Local\docker-secrets-engine\engine.sock
+
+Confirmed recovery used here:
+
+1. Docker Desktop was stopped.
+2. The exact stale socket was verified.
+3. Ubuntu under WSL unlinked only that socket.
+4. Docker Desktop recreated it and started normally.
+
+Important:
+
+- Do not delete the docker-secrets-engine directory or stored credentials.
+- Do not remove arbitrary sockets based only on a similar message.
+- Stop Docker first and verify the exact path and log evidence.
+- An earlier socket-repair diagnostic was not the successful recovery method.
+  Do not treat it as a preferred fix or assume a generic script is safe here.
+
+
+6. LARGE OR OLD STRIX IMAGE IMPORT FAILS
+----------------------------------------
+
+Symptoms:
+
+- Importing the old 1.2 sandbox archive repeatedly crashes or fails.
+- Docker spends substantial time unpacking a multi-gigabyte archive.
+- Retrying consumes space without improving the result.
+
+What worked:
+
+- The old 1.2 bulk import path was abandoned.
+- The already available 1.3.0 base image plus a small local repair layer was
+  used instead.
+
+Recommendation:
+
+Use the sandbox version paired with the tested Strix release. Avoid downloading
+or importing an older multi-gigabyte image unless a specific compatibility need
+requires it.
+
+
+7. SANDBOX EXITS WITH INVALIDP12 OR CERTIFICATE ERRORS
+------------------------------------------------------
+
+Symptoms:
+
+- The sandbox container starts and immediately exits.
+- Caido reports InvalidP12.
+- HTTPS interception cannot initialize.
+
+What happened here:
+
+The locally observed certificate files inside the official-image copy were zero
+bytes. This observation does not prove every distributed image has the same
+problem.
+
+Verified local repair:
+
+- Derived from ghcr.io/usestrix/strix-sandbox:1.3.0.
+- Generated a P-256 CA key, certificate, and P12.
+- Refreshed the Linux system trust store.
+- Preserved the sandbox entrypoint.
+- Verified "Container ready" and Caido HTTP 200.
+
+Repair recipe:
+
+  scripts/windows-compat/Dockerfile
+
+Build:
+
+  docker build --pull=false --tag strix-sandbox:1.3.0-fixed ./scripts/windows-compat
+
+Do not install the testing CA into Windows unless a separately reviewed workflow
+requires it. This repair keeps trust inside the sandbox.
+
+
+8. STRIX SHELL COMMANDS RETURN BLANK OUTPUT ON WINDOWS
+------------------------------------------------------
+
+Symptoms:
+
+- Agent shell commands appear successful with exit code 0.
+- stdout and stderr are empty.
+- Direct `docker exec` against the same container returns the expected output.
+- Agents may loop or waste tokens because they cannot observe tool results.
+
+Confirmed cause:
+
+The OpenAI Agents SDK requested shutdown(SHUT_WR) on a Docker socket. On Windows,
+docker-py's NpipeSocket implementation closed the complete duplex connection,
+discarding the returning command frames. The SDK swallowed the resulting reader
+failure and exposed an empty successful result.
+
+Historical repair, published as optional reference source:
+
+- scripts/windows-compat/strix_terminal_fix.py ignores only the unsupported
+  write-side half-close on a Windows named pipe.
+- scripts/windows-compat/run_strix_repaired.py loads that compatibility module
+  before starting Strix.
+- scripts/windows-compat/README.txt explains the version-specific diagnostic.
+
+The author's private portable runtime and wrapper are not included. Start with
+an official supported installation. A later Strix or SDK version may not need
+or be compatible with this repair.
+
+Verification performed:
+
+- stdout
+- stderr
+- delayed output
+- TTY output
+- read-only listing and reading of the sanitized source
+
+Matching upstream symptom:
+
+  https://github.com/usestrix/strix/issues/727
+
+This fix changes terminal transport only. It does not alter provider safety
+settings or cyber safeguards.
+
+
+9. SANDBOX RESTART HANGS IN CERTUTIL PASSWORD RETRIES
+-----------------------------------------------------
+
+An upstream Windows/Docker issue reports that restarting an existing Strix
+sandbox can cause certutil to retry an unavailable password prompt indefinitely.
+
+Safe workaround for a disposable Strix sandbox:
+
+- Remove and recreate the affected sandbox container instead of restarting it.
+- Do not remove unrelated containers or volumes.
+
+Upstream report:
+
+  https://github.com/usestrix/strix/issues/1498
+
+
+10. LOCAL REPOSITORY COPY OR MATERIALIZATION FAILS ON WINDOWS
+-------------------------------------------------------------
+
+An upstream Strix issue reports intermittent Windows Docker failures while
+copying larger local repositories into the sandbox.
+
+Risk reductions:
+
+- Scan a sanitized allowlist instead of node_modules, virtual environments,
+  build output, and caches.
+- Keep the target small and deterministic.
+- Use WSL/Linux execution when the native Windows transport remains unreliable.
+
+Upstream report:
+
+  https://github.com/usestrix/strix/issues/671
+
+
+11. POSSIBLE CYBERSECURITY ACCESS OR APPROVAL BLOCK
+---------------------------------------------------
+
+This is a possible provider-access issue, not a claim that the linked-account
+route was attempted for the recorded demo. Once the author learned that the
+route could require approval, it was not pursued for that demonstration.
+
+Possible symptoms:
+
+- Strix signs in successfully through ChatGPT.
+- The scan stops with CodexContentGuardrailError.
+- The provider says the content was flagged for possible cybersecurity risk.
+
+What to do:
+
+- Use the official OpenAI cyber-access process when the work requires it.
+- Use an approved API organization/project/model combination.
+- Do not obfuscate prompts, rotate models, or weaken scope descriptions to evade
+  a provider decision.
+
+ChatGPT Pro, an API key, and API credits do not automatically grant Daybreak
+approval.
+
+Read docs/setup/MODEL_SETUP.txt for the routes used in the video. A successful
+sign-in, subscription, or API-key test does not prove that the full security
+workflow is authorized. Review time and acceptance should not be assumed.
+
+Official information:
+
+  https://developers.openai.com/api/docs/guides/safety-checks/cybersecurity
+  https://developers.openai.com/api/docs/guides/daybreak
+
+
+12. GEMINI RETURNS HTTP 503 OR CLOSES CONNECTIONS
+-------------------------------------------------
+
+Symptoms encountered:
+
+- HTTP 503 Service Unavailable
+- A keep-alive connection closed unexpectedly
+- Different Flash models behaved differently
+
+Resolution used for diagnosis:
+
+- Validate the key against Google's model catalog.
+- Use bounded retries for 429, 500, 502, 503, and 504.
+- Use a fresh connection for short validation calls.
+- Step down only through models actually exposed to the API key.
+
+Do not treat repeated provider unavailability as a Docker or repository problem.
+
+
+13. DIRECT GEMINI TEST WORKS BUT STRIX PREFLIGHT TIMES OUT
+---------------------------------------------------------
+
+Symptoms:
+
+- A tiny direct Gemini request succeeds.
+- Strix says the model did not answer within 30 or 120 seconds.
+
+Why this can happen:
+
+Strix's preflight includes a much larger prompt and extensive tool schemas. A
+small "reply OK" request does not prove that a model will handle the real agent
+request.
+
+Resolution used:
+
+- Disable streaming for the Gemini route.
+- Try a smaller available Flash model after a genuine preflight failure.
+- Stop fallback as soon as a real scan starts.
+
+
+14. GEMINI FREE-TIER QUOTA STOPS A REAL SCAN
+--------------------------------------------
+
+Symptoms:
+
+- The scan starts and multiple agents run.
+- Google returns HTTP 429 RESOURCE_EXHAUSTED.
+- The error names generate_content_free_tier_requests.
+
+Observed result:
+
+The Gemini project used in the October 2026 trial reported a 20-request daily
+free-generation allowance for the selected model. This was an observed account
+limit, not a universal current Gemini quota. The
+incomplete Strix run recorded 54 request attempts and approximately 1.2 million
+tokens before stopping. No completed findings were produced.
+
+Conclusion:
+
+Small hosted-model free tiers are not dependable for a complete Strix scan. The
+successful OpenAI run later required 163 requests.
+
+Options:
+
+- Check the account's current quota and reset time before deciding whether
+  another attempt is practical. Do not assume a new run resumes prior work.
+- Use a paid or institution-funded provider with spending controls.
+- Use a capable local model on institution-managed hardware.
+- Use conventional free scanners for a zero-cost classroom exercise.
+
+Do not rotate free accounts or models to evade provider limits.
+
+
+15. OPENAI GPT-4.1-MINI REJECTS STRIX CUSTOM TOOLS
+--------------------------------------------------
+
+Symptoms:
+
+- API key validation succeeds.
+- Strix starts the sandbox.
+- The first agent request returns HTTP 400:
+
+    Invalid value: 'custom'
+    param: tools
+    code: unknown_parameter
+
+Cause:
+
+The older gpt-4.1-mini route did not accept the custom tool type required by
+Strix's Responses API request. It recorded zero successful model requests and
+produced no findings.
+
+Resolution:
+
+Use a model that supports Strix's custom tool schema. The successful model was:
+
+  openai/gpt-5.4-mini
+
+
+16. POWERSHELL DISPLAYS PYTHON STDERR AS NativeCommandError
+-----------------------------------------------------------
+
+Symptoms:
+
+PowerShell prefixes a Strix/Python error line with:
+
+  python.exe : ...
+  FullyQualifiedErrorId : NativeCommandError
+
+Meaning:
+
+PowerShell is wrapping text written to the native process's stderr stream. This
+wrapper is not the root cause. Read the Strix run's strix.log and provider error
+immediately below it.
+
+
+17. TERMINAL BOX CHARACTERS DISPLAY AS GARBLED TEXT
+---------------------------------------------------
+
+Symptoms:
+
+Unicode borders such as ┌─ and │ appear as sequences like ΓöÇ.
+
+Resolution used:
+
+- Set PowerShell and Console output encoding to UTF-8.
+- Set PYTHONUTF8=1 for the launcher process.
+- Use a terminal/font that supports Unicode.
+
+The current secure launchers set these values automatically.
+
+
+18. SCAN MODIFIES THE TARGET WITH __PYCACHE__ FILES
+---------------------------------------------------
+
+Symptoms:
+
+Source hashes remain identical, but post-scan integrity checks report new files
+under __pycache__.
+
+What happened here:
+
+Python validation imported modules from the sanitized source and generated four
+.pyc cache files. No source file was changed.
+
+Resolution:
+
+- Confirm every extra file is under the expected __pycache__ directory.
+- Confirm all source hashes still match.
+- Remove only the verified disposable cache directory.
+- For future scans, mount the target read-only or copy source into a disposable
+  validation directory when supported by the workflow.
+
+
+19. STRIX REPORTS OVERLAPPING FINDINGS
+--------------------------------------
+
+The successful NeoBank run produced:
+
+- A Medium query_account object-authorization report
+- A High combined report covering query_account and internal-policy access
+- A Medium name-only authentication report
+
+The High report overlaps the Medium account-access evidence. Human review should
+deduplicate the final report into root causes rather than adding severity counts
+blindly.
+
+The final NeoBank report uses these three root-cause issues:
+
+1. Cross-user account access
+2. Unrestricted internal-policy access
+3. Name-only authentication
+
+
+20. A FAILED OR INTERRUPTED RUN SHOWS ZERO FINDINGS
+--------------------------------------------------
+
+Zero findings from a failed preflight, provider refusal, quota exhaustion, or
+agent crash do not mean the project is secure.
+
+Before using results, verify:
+
+- run.json status is completed
+- the summary was produced
+- findings.sarif contains the expected results
+- coverage and gaps were reviewed
+- source integrity was checked
+- AI findings were manually validated and deduplicated
+
+
+21. COHORT COST AND REPEATABILITY
+----------------------------------
+
+The successful quick NeoBank scan used 163 model requests and had a Strix cost
+estimate of USD 2.2418. The observed Gemini trial exhausted its free quota.
+Provider allowances vary by account, model, project, and date; verify the
+current limits rather than assuming a free tier can complete the same work.
+
+For a remote cohort:
+
+- Do not distribute an instructor API key.
+- Give viewers the sanitized project, scope, OS setup links, helpers, and saved
+  results so they can follow the full walkthrough.
+- Each hands-on scan still needs working Docker, Strix, authorized model access,
+  and enough provider quota. Agree who funds usage before asking for a scan.
+- If fresh access is unavailable, the supplied reports support a clearly
+  labelled review of the saved run. Do not call that a new scan by the student.
+- A shared remote environment or another scanner may be considered separately;
+  neither is a prerequisite that this video has already arranged.

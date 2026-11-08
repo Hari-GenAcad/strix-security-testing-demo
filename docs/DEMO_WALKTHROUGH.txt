@@ -1,0 +1,175 @@
+STRIX DEMO — FOLLOW-ALONG WALKTHROUGH
+================================
+A worked example using saved evidence. No new scan is running.
+Follow sections 1–7 to install, prepare a target, understand the command,
+and review the completed NeoBank results.
+
+1. INSTALLATION AND CHECKS
+--------------------------
+Strix Quick Start: https://docs.strix.ai/quickstart
+Windows Docker: https://docs.docker.com/desktop/setup/install/windows-install/
+Mac Docker: https://docs.docker.com/desktop/setup/install/mac-install/
+Linux Docker: https://docs.docker.com/engine/install/
+Model connection: https://docs.strix.ai/llm-providers/overview
+
+Windows example: Docker Desktop + WSL 2
+Mac: Docker Desktop for Apple Silicon or Intel
+Linux: Docker Engine
+
+Check in PowerShell / Terminal:
+  docker info
+  docker run --rm hello-world
+  strix --version
+
+
+Detailed guides:
+  docs/setup/WINDOWS_SETUP.txt
+  docs/setup/MAC_SETUP.txt
+  docs/setup/issuesyoumightcomeacross.txt
+
+
+2. OUR PREPARED PROJECT COPY
+---------------------------
+Distributed location: neobank-project/
+The original run used a separate eight-file sanitized copy. The distributed
+Python/dependency files match that source; the README and .gitignore were repackaged.
+
+Included:
+  .gitignore
+  agent.py
+  app.py
+  database.py
+  knowledge_base.py
+  README.md
+  requirements.txt
+  seed_data.py
+
+Excluded:
+  Settings containing secrets, API keys, existing database,
+  installed packages, temporary files, logs, unrelated material.
+
+Keep an untouched original.
+The selected folder is writable. Code may be sent to the AI provider.
+
+
+3. TESTING INSTRUCTIONS
+-----------------------
+The complete instruction file:
+scope.txt
+Original-run instruction copy: scripts/strix-source-scan-instructions.txt
+
+Teaching summary:
+  Test only this supplied project.
+  Use fictional data and local checks.
+  Keep the supplied files unchanged.
+  Leave unrelated systems alone.
+  Avoid live calls from the banking app to its AI service.
+  Report evidence, impact, and a recommended fix.
+
+These instructions guide the tool; they do not enforce technical isolation.
+
+
+4. HOW TO START — COMMAND EXAMPLES, NOT RUNNING NOW
+--------------------------------------------------
+After installing Strix and connecting your model:
+
+strix -n --target "./neobank-project" --scan-mode quick --scope-mode full --instruction-file "./scope.txt" --max-budget 5 --max-turns 80
+
+--target             Location of your prepared project folder.
+--instruction-file   Location of your testing instructions.
+--scan-mode quick    Shorter test.
+--max-budget 5       Estimated spending threshold; can overshoot.
+--max-turns 80       Work limit per AI worker, not total request count.
+
+Strix asks Docker to create its container, makes the selected folder
+available inside it, and runs the checks.
+
+Our existing Windows / NeoBank helper:
+  .\scripts\RUN_NEOBANK_WITH_OPENAI.ps1 -DryRun
+  .\scripts\RUN_NEOBANK_WITH_OPENAI.ps1
+
+Run from your clone's root. DryRun is safe to show without a key or model call.
+The actual helper prompts privately and creates a disposable eight-file copy.
+It is for this NeoBank source exercise, not arbitrary projects.
+Strix can save the key in its local user configuration; never share that file.
+
+
+5. SAVED RUN — 29 OCTOBER 2026
+------------------------------
+The figures below summarize existing evidence, not a live terminal replay.
+
+Run: neobank-quality-sanitized-202610_df70
+Status: completed
+Model: openai/gpt-5.4-mini
+Test: quick, full sanitized source
+Duration: about 9 minutes 22 seconds
+Model requests: 163
+Estimated model cost: $2.24
+Raw reports: 1 High, 2 Medium; some account-access evidence overlaps.
+
+The original console warns about generated temporary Python cache files.
+The eight project files were subsequently verified unchanged.
+
+Original evidence:
+strix_runs/neobank-quality-sanitized-202610_df70/
+strix_runs/neobank-quality-sanitized-202610_df70/console.log
+Browser-readable transcript: console-readable.txt in the same folder.
+The complete saved reports, logs, usage, and coverage are included here.
+Only internal resume/session state is omitted. See the evidence README.txt.
+
+
+6. FINDINGS AND ONE CODE EXAMPLE
+--------------------------------
+Three distinct issues:
+  Account lookup can return another customer's information.
+  Policy lookup can reveal staff-only material to a customer.
+  Login accepts a name without proof of identity.
+
+Merge duplicate reports before counting problems.
+
+Tests used sample data and simulated banking-app replies.
+Strix still used its connected model. No live banking deployment was tested.
+
+Report excerpt — vuln-0001.md, Description:
+"The ARIA `query_account(user_id)` tool accepts a caller-supplied user ID
+and returns the matching account profile and transaction history without
+verifying that the requested record belongs to the logged-in user."
+
+Source excerpt — sanitized agent.py:80–89:
+    def query_account(user_id: str) -> str:
+        """Look up account details and transactions for a user ID.
+        Call this when the customer asks about account balance, details, or transactions.
+        Example user_id: 'USR-0042'."""
+        logger.info(f"[TOOL] query_account('{user_id}')")
+        customer = get_customer(conn, user_id.strip())
+        if not customer:
+            return f"Account not found for user_id: {user_id}"
+        transactions = get_transactions(conn, user_id.strip())
+        return format_account_details(customer, transactions)
+
+Think: where does it check who is signed in?
+Missing: a check that the requested account belongs to the signed-in customer.
+Proposed fix: enforce that check before fetching data.
+Retest: own account allowed; another customer's account refused.
+No patch or retest is being claimed in this video.
+
+Full report:
+docs/reports/NEOBANK_STRIX_RESULTS.txt
+
+
+7. TRY IT AND REVIEW IT
+-----------------------
+Prepare an authorized copy.
+Write testing instructions.
+Connect the model and check its request allowance.
+Start Strix with the selected folder.
+Keep the original report and instructions.
+Check completion and coverage — tested and untested areas.
+Verify a finding against code and local tests.
+Explain who is affected, the fix, and how to check it works.
+
+Results are saved under strix_runs/<run-name>/.
+Saved results can also be used for review while arranging model access.
+
+Resource sheet:
+docs/VIEWER_FOLLOW_ALONG.txt

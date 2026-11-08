@@ -1,0 +1,4 @@
+id,title,severity,timestamp,file
+vuln-0002,Missing authorization in ARIA tools exposes other customers' accounts and internal policy data,HIGH,2026-10-29 10:21:55 UTC,vulnerabilities/vuln-0002.md
+vuln-0001,Missing object-level authorization in ARIA `query_account`,MEDIUM,2026-10-29 10:20:37 UTC,vulnerabilities/vuln-0001.md
+vuln-0003,Name-only login allows account impersonation,MEDIUM,2026-10-29 10:22:30 UTC,vulnerabilities/vuln-0003.md

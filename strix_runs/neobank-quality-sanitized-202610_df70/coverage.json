@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-29 10:24:02 UTC",
+  "run_id": "neobank-quality-sanitized-202610_df70",
+  "run_name": "neobank-quality-sanitized-202610_df70",
+  "scope": {
+    "targets": [
+      {
+        "type": "local_code",
+        "details": {
+          "target_path": "D:\\pentesting\\.scan-targets\\neobank-quality-sanitized-20261028",
+          "workspace_subdir": "neobank-quality-sanitized-20261028"
+        },
+        "original": "D:\\pentesting\\.scan-targets\\neobank-quality-sanitized-20261028"
+      }
+    ],
+    "scan_mode": "quick",
+    "scope_mode": "full",
+    "diff_scope": {
+      "active": false,
+      "mode": "full"
+    },
+    "instruction": "This is an authorized local source-code assessment of an intentionally vulnerable workshop project.\n\nScope and safety constraints:\n- Test only the supplied local source-code target.\n- Do not contact or scan unrelated external systems.\n- Do not modify, delete, rename, or generate files in the target directory.\n- Do not use real credentials or production data.\n- For local validation, copy the supplied code into a disposable scratch directory\n  outside the mounted target and use only the fictional seed data or an in-memory\n  SQLite database. Never run code that creates neobank.db in the mounted target.\n- Do not call the live OpenAI API from the tested app. Stub model responses if\n  needed to validate tool execution, access checks, or data-handling behavior.\n- Ignore .venv, venv, __pycache__, and other generated dependency/cache directories.\n\nFocus areas:\n- Prompt injection and jailbreak paths.\n- Sensitive-data and system-prompt disclosure.\n- Unsafe agent tool use and excessive agency.\n- Authentication and authorization weaknesses.\n- Cross-user data access and IDOR-style issues.\n- SQLite/query handling and injection risks.\n- Secret and API-key handling.\n- Multi-turn escalation and business-logic weaknesses.\n\nReport evidence, realistic impact, reproduction guidance, and practical remediation. Keep all validation within the local workshop target."
+  },
+  "summary": {
+    "surfaces_reviewed": 12,
+    "outcomes": {
+      "reported": 7,
+      "no_issue_found": 2,
+      "ruled_out": 3
+    },
+    "findings_filed": 3,
+    "gaps": 1
+  },
+  "machine_observed": {
+    "agents": [
+      {
+        "agent_id": "1a151b96",
+        "agent_name": "ARIA Prompt & Tool Abuse",
+        "status": "completed",
+        "skills": [
+          "technologies/llm_applications",
+          "vulnerabilities/llm_prompt_injection",
+          "vulnerabilities/business_logic"
+        ],
+        "task": "Assess the local workshop repo at `/workspace/neobank-quality-sanitized-20261028` for prompt injection, jailbreak, sensitive-data disclosure, unsafe agent tool use, excessive agency, and multi-turn escalation. Focus on `agent.py`, `knowledge_base.py`, and the chat flow in `app.py`. Use a disposable scratch copy outside the mounted target if you need to run the app; do not modify the mounted target, do not create `neobank.db` there, and do not call the live OpenAI API from the app — stub or mock model responses as needed to validate tool execution and data-handling behavior. Produce any validated finding with clear reproduction evidence, and record coverage for each surface you assess.",
+        "is_root": false
+      },
+      {
+        "agent_id": "ac1f322f",
+        "agent_name": "Auth & IDOR Boundary",
+        "status": "completed",
+        "skills": [
+          "vulnerabilities/idor",
+          "vulnerabilities/broken_function_level_authorization",
+          "vulnerabilities/sql_injection"
+        ],
+        "task": "Assess the local workshop repo at `/workspace/neobank-quality-sanitized-20261028` for authentication, authorization, object-level access control, cross-user data access, and SQLite/query handling risks. Focus on the login flow in `app.py` and the database helpers in `database.py`, especially how `authenticate_by_name`, `get_customer`, `get_transactions`, and `query_account`-style access are scoped. Validate whether any logged-in user can reach another customer’s records or internal staff data, and whether the app leaks or reuses identity state unsafely across turns. Use a disposable scratch copy outside the mounted target if runtime validation is needed; do not modify the mounted target, do not create `neobank.db` there, and do not call the live OpenAI API.",
+        "is_root": false
+      },
+      {
+        "agent_id": "4fed671b",
+        "agent_name": "Auth Reporting Agent",
+        "status": "completed",
+        "skills": [
+          "vulnerabilities/idor",
+          "custom/source_aware_sast"
+        ],
+        "task": "File one vulnerability report for the confirmed object-level authorization failure in `agent.py` / `database.py`: the `query_account(user_id)` tool returns arbitrary customer and staff records without binding the lookup to the current authenticated user. Use the validation already completed in the shared note and do not re-run broad scans. Include the code locations and an inline minimal fix that scopes the lookup to the logged-in user or rejects any mismatched `user_id`. Also record coverage for the reviewed surface(s) and close the task once the report is filed.",
+        "is_root": false
+      },
+      {
+        "agent_id": "abb209c1",
+        "agent_name": "Root Agent",
+        "status": "completed",
+        "skills": [],
+        "task": "\n\nLocal Codebases: - D:\\pentesting\\.scan-targets\\neobank-quality-sanitized-20261028 (available at: /workspace/neobank-quality-sanitized-20261028; this is the user's real directory, mounted live and writable — .git/.agents/.codex are read-only)\n\nSpecial instructions: This is an authorized local source-code assessment of an intentionally vulnerable workshop project.\n\nScope and safety constraints:\n- Test only the supplied local source-code target.\n- Do not contact or scan unrelated external systems.\n- Do not modify, delete, rename, or generate files in the target directory.\n- Do not use real credentials or production data.\n- For local validation, copy the supplied code into a disposable scratch directory\n  outside the mounted target and use only the fictional seed data or an in-memory\n  SQLite database. Never run code that creates neobank.db in the mounted target.\n- Do not call the live OpenAI API from the tested app. Stub model responses if\n  needed to validate tool execution, access checks, or data-handling behavior.\n- Ignore .venv, venv, __pycache__, and other generated dependency/cache directories.\n\nFocus areas:\n- Prompt injection and jailbreak paths.\n- Sensitive-data and system-prompt disclosure.\n- Unsafe agent tool use and excessive agency.\n- Authentication and authorization weaknesses.\n- Cross-user data access and IDOR-style issues.\n- SQLite/query handling and injection risks.\n- Secret and API-key handling.\n- Multi-turn escalation and business-logic weaknesses.\n\nReport evidence, realistic impact, reproduction guidance, and practical remediation. Keep all validation within the local workshop target.",
+        "is_root": true
+      },
+      {
+        "agent_id": "4a72b677",
+        "agent_name": "Source-Aware Triage",
+        "status": "completed",
+        "skills": [
+          "custom/source_aware_sast"
+        ],
+        "task": "Perform source-aware static triage on the local workshop repo at `/workspace/neobank-quality-sanitized-20261028`. Map the runtime architecture and key trust boundaries from code, then run a bounded baseline bundle: Semgrep, at least one AST structural pass with `sg` or Tree-sitter, a secrets pass (`gitleaks` and/or `trufflehog`), and `trivy fs`. Focus on the app/agent/database/knowledge-base files, ignore generated caches and virtualenvs, and keep artifacts in a scratch directory outside the mounted target. Report concrete candidate surfaces, code locations, and any obvious no-issue/rule-out conclusions, plus coverage entries for the surfaces reviewed.",
+        "is_root": false
+      }
+    ],
+    "skills_exercised": [
+      "broken_function_level_authorization",
+      "business_logic",
+      "idor",
+      "llm_applications",
+      "llm_prompt_injection",
+      "source_aware_sast",
+      "sql_injection"
+    ],
+    "findings_filed": 3,
+    "source": "runtime"
+  },
+  "completeness": {
+    "complete": true,
+    "scan_status": "completed",
+    "exit_reason": "finished_by_tool",
+    "caveats": []
+  },
+  "entries": [
+    {
+      "surface": "app.py login flow",
+      "risk_area": "authentication / account selection",
+      "outcome": "reported",
+      "outcome_label": "Finding reported",
+      "evidence": "Validated in-memory that the login flow accepts a seeded full name as the only account secret and the issue was filed as `vuln-0003`. The surface is no longer open.",
+      "recorded_by": "Root Agent",
+      "recorded_at": "2026-10-29 10:17:44 UTC",
+      "updated_at": "2026-10-29 10:23:31 UTC",
+      "previous_outcomes": [
+        "needs_follow_up"
+      ],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "agent.py tool bridge",
+      "risk_area": "IDOR / object-level authorization",
+      "outcome": "reported",
+      "outcome_label": "Finding reported",
+      "evidence": "Validated that the `query_account` bridge can reach cross-user and staff records without an ownership check; the issue was filed as `vuln-0001` and reinforced by `vuln-0002`. The surface is now closed with a report.",
+      "recorded_by": "Root Agent",
+      "recorded_at": "2026-10-29 10:17:48 UTC",
+      "updated_at": "2026-10-29 10:23:34 UTC",
+      "previous_outcomes": [
+        "needs_follow_up"
+      ],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "database.py SQLite helpers",
+      "risk_area": "SQL injection",
+      "outcome": "ruled_out",
+      "outcome_label": "Ruled out",
+      "evidence": "Every SQL statement I checked uses bound parameters (`?`) in `get_customer()`, `get_transactions()`, `authenticate_user()`, and `authenticate_by_name()`, and I did not find any string concatenation, f-strings, or `format()`-built SQL on attacker-controlled input paths.",
+      "recorded_by": "Source-Aware Triage",
+      "recorded_at": "2026-10-29 10:17:51 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "knowledge_base.py knowledge base",
+      "risk_area": "hardcoded secrets / API-key leakage",
+      "outcome": "no_issue_found",
+      "outcome_label": "No issue identified",
+      "evidence": "The file contains policy and reference text only; I found no API keys, tokens, passwords, or other credential-like literals in the knowledge base, and the secret scans (`gitleaks` / `trufflehog`) were clean on the repository.",
+      "recorded_by": "Source-Aware Triage",
+      "recorded_at": "2026-10-29 10:17:55 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "agent.py build_tools()/invoke_agent()",
+      "risk_area": "unsafe agent tool use / excessive agency",
+      "outcome": "reported",
+      "outcome_label": "Finding reported",
+      "evidence": "`query_account` and `lookup_policy` accept model-chosen arguments with no ownership/role check, and `invoke_agent` executes the first tool call the model emits. In the local PoC, a fake model steered the agent to fetch `USR-PP-001` and the restricted `internal_reference_only` topic, then the patched scratch copy returned access denied for both.",
+      "recorded_by": "ARIA Prompt & Tool Abuse",
+      "recorded_at": "2026-10-29 10:20:27 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "knowledge_base.py internal_reference_only entry",
+      "risk_area": "sensitive-data disclosure",
+      "outcome": "reported",
+      "outcome_label": "Finding reported",
+      "evidence": "The `internal_reference_only` topic contains treasury reserve ratios, borrowing details, and fraud override logs. On the vulnerable build, `lookup_policy('internal_reference_only')` returned the full entry to a standard customer session in the local PoC.",
+      "recorded_by": "ARIA Prompt & Tool Abuse",
+      "recorded_at": "2026-10-29 10:20:31 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "app.py chat flow",
+      "risk_area": "prompt injection / jailbreak handling",
+      "outcome": "no_issue_found",
+      "outcome_label": "No issue identified",
+      "evidence": "The chat UI is a thin relay: it appends the user prompt to session history, passes it into `invoke_agent`, and renders the response. I did not find a separate app-layer moderation or sanitization control here; the exploitable authorization failure was in `agent.py`, not in the Streamlit shell itself.",
+      "recorded_by": "ARIA Prompt & Tool Abuse",
+      "recorded_at": "2026-10-29 10:20:35 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "agent.py `query_account(user_id)` / database.py account lookup helpers",
+      "risk_area": "IDOR / object-level authorization",
+      "outcome": "reported",
+      "outcome_label": "Finding reported",
+      "evidence": "Confirmed that `agent.py` forwards caller-supplied `user_id` directly into `database.py` lookups with no ownership check; filed as `vuln-0001` with a minimal fix that binds the tool to the authenticated session user before any database read.",
+      "recorded_by": "Auth Reporting Agent",
+      "recorded_at": "2026-10-29 10:20:41 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "agent.py `query_account(user_id)`",
+      "risk_area": "object-level authorization / IDOR",
+      "outcome": "reported",
+      "outcome_label": "Finding reported",
+      "evidence": "Validated on an in-memory SQLite seed: the tool path returned full records for another customer (`USR-PP-001`) and the internal staff account (`USR-STAFF-01`) when given those user IDs, with no ownership or role check. The finding was filed as a report.",
+      "recorded_by": "Auth & IDOR Boundary",
+      "recorded_at": "2026-10-29 10:22:37 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "app.py login flow / `authenticate_by_name()`",
+      "risk_area": "authentication / account impersonation",
+      "outcome": "reported",
+      "outcome_label": "Finding reported",
+      "evidence": "Validated in-memory: entering a seeded full name (including the staff name) immediately authenticated that identity, with no password or second factor. The finding was filed as a report.",
+      "recorded_by": "Auth & IDOR Boundary",
+      "recorded_at": "2026-10-29 10:22:42 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "app.py session state logout / API-key revalidation",
+      "risk_area": "identity reuse across turns",
+      "outcome": "ruled_out",
+      "outcome_label": "Ruled out",
+      "evidence": "Logout pops `logged_in`, `user_name`, `user_id`, `account_tier`, `messages`, and `api_key_validated`, and an API-key change clears `logged_in` again before rerun; I traced that control in `app.py:294-297` and `app.py:523-534`, so prior identity state does not persist across turns.",
+      "recorded_by": "Auth & IDOR Boundary",
+      "recorded_at": "2026-10-29 10:22:44 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    },
+    {
+      "surface": "database.py customer lookup helpers (`authenticate_by_name`, `authenticate_user`, `get_customer`, `get_transactions`)",
+      "risk_area": "SQL injection",
+      "outcome": "ruled_out",
+      "outcome_label": "Ruled out",
+      "evidence": "Every lookup uses parameterized SQL with `?` placeholders; there is no string concatenation in these helpers. I checked the call sites and the query text in `database.py:93-136`, so attacker-controlled input reaches bound parameters rather than SQL syntax.",
+      "recorded_by": "Auth & IDOR Boundary",
+      "recorded_at": "2026-10-29 10:22:48 UTC",
+      "updated_at": "",
+      "previous_outcomes": [],
+      "source": "agent_reported"
+    }
+  ],
+  "gaps": [
+    {
+      "kind": "unrecorded_risk_class",
+      "risk_area": "business logic",
+      "detail": "Agent(s) ARIA Prompt & Tool Abuse were assigned the 'business_logic' skill, but no coverage entry records this class being assessed. Treat it as unexamined, not as clean."
+    }
+  ]
+}

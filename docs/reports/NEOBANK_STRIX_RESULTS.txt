@@ -1,0 +1,280 @@
+NEOBANK ARIA - COMPLETED STRIX ASSESSMENT
+=========================================
+
+Scan: 29 October 2026
+Publication review: 8 November 2026
+All file paths below are repository-relative unless labeled historical.
+
+
+FINAL STATUS
+------------
+
+The sanitized NeoBank source assessment completed successfully with Strix.
+
+  Run ID:             neobank-quality-sanitized-202610_df70
+  Status:             completed
+  Model:              openai/gpt-5.4-mini
+  Scan mode:          quick
+  Scope:              full sanitized source
+  Findings:           3 reports: 1 High, 2 Medium
+  Model requests:     163
+  Duration:           approximately 9 minutes 22 seconds
+  Input tokens:       13,630,441
+  Cached input:       12,618,112
+  Output tokens:      119,152
+  Strix cost estimate: USD 2.24178915
+
+The cost is Strix's estimate, not an independently verified invoice or a claim
+that a particular credit offer covered it. Future prices, model availability,
+account access, quotas, duration, and findings may differ.
+
+
+TARGET AND SAFETY
+-----------------
+
+Original project on the demonstration computer (historical, not distributed):
+
+  D:\pentesting\week6_neobank_aria_agent-main
+
+Target location used by the historical scan (not a required student path):
+
+  D:\pentesting\.scan-targets\neobank-quality-sanitized-20261028
+
+Files included in that historical snapshot:
+
+  .gitignore, agent.py, app.py, database.py, knowledge_base.py,
+  README.md, requirements.txt, seed_data.py
+
+Published source location:
+
+  neobank-project/
+
+The six Python/dependency files retain the scanned content. The public README
+and .gitignore were repackaged for learners, so the current eight-file package
+is not claimed to match every historical hash.
+
+Excluded content included environment secrets, the existing database, virtual
+environments, caches, logs, and unrelated files. The project identifies its seed
+data as fictional workshop data.
+
+The scan instructions prohibited unrelated external targets, target-source edits,
+real credentials, production data, and live calls from the tested NeoBank app.
+
+Validation used fictional data and simulated replies in place of the NeoBank
+application's live AI calls. Strix still used its own connected model to inspect
+the code. These results do not demonstrate attacks against a deployed banking
+service or against the live NeoBank model.
+
+The scope is published in scope.txt. Selected target folders are writable in
+Docker; the instructions alone do not enforce read-only access or network
+isolation.
+
+
+FINDING 1 - CROSS-USER ACCOUNT ACCESS
+-------------------------------------
+
+Severity reported by Strix: Medium
+CWE: CWE-639
+CVSS reported by Strix: 6.5
+
+The ARIA query_account(user_id) tool accepts an arbitrary user identifier and
+does not compare it with the authenticated session identity. An authenticated
+customer can request another customer or staff record and receive profile,
+balance, fraud-flag, and transaction information.
+
+Evidence:
+
+- agent.py:57-91 builds query_account without receiving current_user_id.
+- agent.py:80-89 passes the caller-supplied user_id directly to database helpers.
+- agent.py:103 builds tools without binding the authenticated user.
+- database.py:93-111 correctly parameterizes SQL but performs no caller-level
+  authorization check.
+
+Root cause:
+
+Authorization was delegated to the model prompt instead of being enforced in the
+tool implementation.
+
+Recommended remediation:
+
+- Bind query_account to the server-side authenticated user.
+- Reject a requested identifier that differs from the session principal.
+- Enforce authorization before any database lookup.
+- Add regression tests for cross-customer and staff-account access.
+
+
+FINDING 2 - UNRESTRICTED INTERNAL POLICY ACCESS
+-----------------------------------------------
+
+Severity included in Strix's High combined tool-authorization report
+CWE: CWE-862
+CVSS reported by Strix for the combined report: 7.5
+
+The lookup_policy tool accepts attacker-influenced topics and exposes every
+knowledge-base entry without checking the authenticated user's role. The
+internal_reference_only entry contains fictional restricted treasury, reserve,
+borrowing, and fraud-override information.
+
+Evidence:
+
+- agent.py:64-77 returns any matching KNOWLEDGE_BASE entry.
+- agent.py:68-69 advertises internal_reference_only as an available topic.
+- knowledge_base.py:110-131 labels the entry confidential and restricts its
+  intended distribution to Finance, Risk, and Compliance.
+
+Root cause:
+
+The model-facing tool has access to restricted content but no role-based policy
+enforcement.
+
+Recommended remediation:
+
+- Classify policy topics by audience.
+- Pass the authenticated role into the tool layer.
+- Deny restricted topics before retrieving their contents.
+- Return a generic access-denied response without revealing restricted topic
+  names or content.
+- Add customer-versus-staff authorization tests.
+
+
+FINDING 3 - NAME-ONLY AUTHENTICATION
+------------------------------------
+
+Severity reported by Strix: Medium
+CWE: CWE-287
+
+The login form authenticates a user using only a full name. Anyone who knows or
+guesses a seeded customer or staff name can impersonate that user and inherit the
+corresponding session identity.
+
+The UI separately checks that an OpenAI API key is valid. That does not prove
+ownership of the NeoBank identity named in the form.
+
+Evidence:
+
+- app.py:390-404 and 451-478 use the entered name to establish NeoBank identity.
+- database.py:127-137 authenticates by a case-insensitive name lookup alone.
+
+Root cause:
+
+A public identifier is treated as an authentication secret.
+
+Recommended remediation:
+
+- Use an established authentication provider or a verified secret/second factor.
+- Do not use display names as credentials.
+- Add failed-login, duplicate-name, staff-impersonation, and session-establishment
+  tests.
+
+Two public identifiers, such as a name plus a user ID, are not a genuine second
+factor. Review raw AI-generated remediation advice before using it. No code fix
+or successful post-fix retest is claimed by this recorded demonstration.
+
+
+DEDUPLICATION NOTE
+------------------
+
+Strix displayed three vulnerability reports. Its High tool-authorization report
+includes both the cross-user query_account path and internal-policy disclosure.
+The Medium IDOR report separately describes the same query_account path.
+
+For a professional final report, present three root-cause issues:
+
+1. Cross-user account access
+2. Unrestricted internal-policy access
+3. Name-only authentication
+
+Do not count the account-access evidence twice when calculating totals.
+
+The raw severity and CVSS labels are scanner claims, not authoritative ratings.
+Reassess their assumptions, including whether an authenticated user is needed.
+
+
+USEFUL NEGATIVE RESULTS
+-----------------------
+
+Strix recorded the following reviewed areas without a validated vulnerability:
+
+- SQL injection was ruled out in the reviewed SQLite helpers because queries use
+  bound parameters.
+- No hardcoded API keys or credential-like secrets were identified in the
+  sanitized target.
+- Logout and API-key changes clear stored session identity, reducing identity
+  reuse across turns.
+- The exploitable authorization weakness resides in the agent/tool boundary,
+  rather than SQL construction.
+
+These are scoped observations from a quick source assessment, not proof that no
+other vulnerability exists.
+
+
+SOURCE-INTEGRITY RESULT
+-----------------------
+
+SHA-256 comparison after the completed scan confirmed that all eight historical
+allowlisted files matched their original counterparts at that time.
+
+Python generated four .pyc files under the sanitized target's __pycache__ folder.
+They contained compiled cache data only and were removed during workspace cleanup.
+No original source, database, credential, or backup was modified.
+
+
+OUTPUT LOCATIONS
+----------------
+
+Published completed-run directory:
+
+  strix_runs/neobank-quality-sanitized-202610_df70/
+
+Terminal transcript:
+
+  strix_runs/neobank-quality-sanitized-202610_df70/console.log
+
+Machine-readable findings:
+
+  findings.sarif
+
+Detailed execution log:
+
+  strix.log
+
+Run metadata and usage:
+
+  run.json
+
+Coverage information:
+
+  coverage.json
+
+Local viewer:
+
+  strix view neobank-quality-sanitized-202610_df70
+
+The Markdown and JSON artifacts can be read without starting Strix or making
+another model call. Internal .state resume data and local credentials are not
+needed for that review and are not published.
+
+
+KEY HANDLING
+-------------
+
+The demonstration key was entered at a hidden local prompt. The launcher cleared
+its temporary environment variables afterward, but Strix also persisted an
+LLM_API_KEY setting in C:\Users\harit\.strix\cli-config.json, outside the project.
+That private configuration is not part of this repository or the published run.
+Do not display it during a recording. Hidden entry does not mean that Strix
+never stores a credential on disk.
+
+
+LIMITATIONS
+-----------
+
+- This was quick mode, not an exhaustive penetration test.
+- The target was a sanitized source copy, not a production deployment.
+- Live NeoBank model calls were intentionally prohibited.
+- AI-generated findings require human validation and deduplication.
+- The coverage record contains one untested gap; completed does not mean
+  exhaustive.
+- The successful run required 163 provider requests. A small request allowance
+  can stop a scan; historical free-tier failures do not prove that every current
+  free provider will fail.

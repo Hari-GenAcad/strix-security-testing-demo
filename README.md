@@ -9,10 +9,24 @@ authorized educational security testing.
 
 - `neobank-project/` — the sanitized source-code target
 - `scope.txt` — safety boundaries and review areas for Strix
-- this guide — the shortest path from setup to reviewing a result
+- `scripts/` — a key-entry helper, scan runner, and optional Windows repair recipes
+- [Demo walkthrough](docs/DEMO_WALKTHROUGH.txt) — one file in video order
+- [Viewer follow-along](docs/VIEWER_FOLLOW_ALONG.txt) — links and commands
+- [Windows setup](docs/setup/WINDOWS_SETUP.txt), [Mac notes](docs/setup/MAC_SETUP.txt),
+  [model setup](docs/setup/MODEL_SETUP.txt), and
+  [troubleshooting](docs/setup/issuesyoumightcomeacross.txt)
+- [Reviewed findings](docs/reports/NEOBANK_STRIX_RESULTS.txt),
+  [trial history](docs/reports/STRIX_NEOBANK_TRIAL_REPORT.txt), and
+  [data-handling choices](docs/reports/levels%20of%20access.txt)
+- [How Strix works](docs/images/01_HOW_STRIX_WORKS.png) and
+  [model-access options](docs/images/02_MODEL_ACCESS_OPTIONS.png) — video visuals
+- [Saved completed run](strix_runs/neobank-quality-sanitized-202610_df70/README.txt) —
+  original findings, execution/console logs, usage, and coverage
 
-No API keys, databases, scan answers, instructor notes, local tool runtimes, or
-previous scan output are included.
+The saved example includes the findings discussed in the video. If you want to
+try discovering them yourself, run your scan before reading the example reports.
+No API keys, real databases, presenter narration/notes, local tool runtimes, or
+internal resumable session databases are included.
 
 ## 1. Install the required tools
 
@@ -27,6 +41,9 @@ Install Docker for your operating system and then install Strix:
 Windows uses Docker Desktop with WSL 2. macOS uses Docker Desktop directly.
 Linux can use Docker Engine. Strix also needs access to a supported model
 provider with enough credits and request quota for the scan.
+Follow [model setup](docs/setup/MODEL_SETUP.txt) before starting. A paid account
+does not bypass provider cybersecurity safeguards. Mac/Linux installation has
+not been verified on this presenter's machine; use the official OS instructions.
 
 Check the installation in PowerShell or a terminal:
 
@@ -59,6 +76,9 @@ they are not a substitute for Docker, provider, network, or account controls.
 
 ## 4. Run the scan
 
+You do not need a new scan or an API key to review the
+[saved demonstration](strix_runs/neobank-quality-sanitized-202610_df70/README.txt).
+
 From this repository's root directory, run:
 
 ```text
@@ -69,9 +89,30 @@ The budget is an estimate rather than a guaranteed spending cap, and in-flight
 model calls can exceed it. The turn limit applies per agent. Monitor usage in
 your model-provider account and stop the run if it exceeds your approved limit.
 
+For Windows, the supplied helper creates a new sanitized copy automatically and
+prompts for an OpenAI Platform key without showing it. First preview it safely:
+
+```powershell
+.\scripts\RUN_NEOBANK_WITH_OPENAI.ps1 -DryRun
+```
+
+Then, only when ready to use your model account:
+
+```powershell
+.\scripts\RUN_NEOBANK_WITH_OPENAI.ps1
+```
+
+The helper defaults to `gpt-5.4-mini`, the historical successful example. Confirm
+your account's current access and compatibility before running. It does not
+automatically fall back to other models. It is specific to this NeoBank target.
+Your key may be persisted by Strix in your local user configuration outside this
+repository; never show or share that file.
+
 ## 5. Review the result
 
-Strix normally writes a new folder under `strix_runs/`. Start with:
+Strix normally writes a new folder under `strix_runs/`. Our completed example is
+`strix_runs/neobank-quality-sanitized-202610_df70/`; future runs are ignored by
+Git by default. Start with:
 
 - `penetration_test_report.md` for the summary
 - `vulnerabilities/` for individual findings
@@ -89,6 +130,16 @@ For every reported issue:
 A completed scan is not proof that the project is secure. The expected exercise
 output is a short human-reviewed report separating confirmed findings,
 duplicates, false positives, coverage gaps, and recommended fixes.
+
+## Saved demonstration facts
+
+The completed Windows scan on 29 October 2026 used Strix 1.7.0 and OpenAI
+`gpt-5.4-mini`. It made **163 model requests**, took about **9 minutes 22 seconds**,
+and reported an estimated **$2.24** model cost. This is not a price guarantee or
+an independently verified invoice. It was a quick source review using fictional
+data and simulated replies from the banking app, not a live banking deployment
+test. Strix itself used the connected model. Review the evidence README for the
+overlapping findings, original path references, and source-integrity caveats.
 
 ## Safety rules
 

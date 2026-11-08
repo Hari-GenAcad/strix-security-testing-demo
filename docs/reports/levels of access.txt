@@ -1,0 +1,282 @@
+LEVELS OF ACCESS FOR PROJECT SECURITY TESTING
+============================================================
+
+Purpose
+-------
+This guide defines three practical ways to security-test a project:
+
+1. Privacy First
+2. Quality First
+3. Maximum Control
+
+These are data-handling approaches, not the two model-account options shown in
+the video. They are not Strix permission tiers, provider approval levels, or a
+ranking that guarantees one model finds more issues than another.
+
+These three levels are a useful framework for different projects, but they are
+not automatic permissions. Before every test, confirm the target, ownership,
+data sensitivity, allowed techniques, and whether any external service may
+receive project information.
+
+No security test can prove that a project is completely secure. A test only
+reports what was found within its scope, time, tools, access, and test data.
+
+
+LEVEL 1: PRIVACY FIRST
+============================================================
+
+Goal
+----
+Keep project information on systems you control.
+
+How it works
+------------
+- Run Strix with a locally hosted model through Ollama, LM Studio, or another
+  compatible local inference server.
+- Run the Strix sandbox and testing tools locally through Docker.
+- Test a local or isolated staging copy of the application.
+- Keep source code, prompts, application responses, and findings local.
+- Disable or avoid optional external integrations and web-search providers.
+- Download required models and tool images before an air-gapped test.
+
+What may leave the machine
+--------------------------
+Nothing from the assessment should leave the machine when the setup is fully
+local and outbound network access is disabled. Initial software/model downloads
+still require network access unless they are transferred from trusted media.
+
+Advantages
+----------
+- Best choice for confidential, regulated, proprietary, or client projects.
+- Source code and test evidence remain under your control.
+- Can be used in an isolated or air-gapped environment.
+
+Limitations
+-----------
+- Requires enough disk space, RAM, and preferably a capable GPU.
+- Large local models can be slow.
+- Smaller models may miss vulnerabilities or struggle with complex tool use.
+- Setup and maintenance are more involved.
+
+Good fit
+--------
+- Private company source code.
+- Projects containing sensitive intellectual property.
+- Client work that prohibits third-party processing.
+- Environments with strict compliance or data-residency requirements.
+
+
+LEVEL 2: QUALITY FIRST
+============================================================
+
+Goal
+----
+Use a capable cloud AI model for stronger reasoning and more reliable agentic
+testing while reducing unnecessary disclosure.
+
+How it works
+------------
+- Strix coordinates the scan on your computer; Docker runs its testing tools in
+  a separate container. The selected local target folder is writable inside it.
+- The configured cloud AI provider receives the information Strix places in
+  model requests so the model can decide what to inspect and which tests to run.
+- Depending on the scan, this information can include selected source code,
+  filenames, instructions, dependency information, application responses,
+  error messages, tool output, and vulnerability evidence.
+- Strix executes approved testing actions against the authorized target.
+- Findings and reports are saved locally, although the model provider has
+  processed the assessment context sent to it.
+
+What happens to the project
+---------------------------
+- The original project does not need to be modified.
+- A sanitized scan copy should be created and scanned instead.
+- The scan copy should contain only files required for security analysis.
+- Strix may read those files and send relevant content to the cloud model.
+- For a live test, relevant page content, API responses, and errors may also be
+  included in model requests.
+- Provider storage, retention, training, regional processing, and access rules
+  depend on the selected provider, account type, and current service terms.
+  Those rules must be checked before testing sensitive code.
+
+Exclude before scanning
+-----------------------
+- .env files and local configuration containing secrets.
+- API keys, passwords, access tokens, certificates, and private keys.
+- Production databases and database backups.
+- Customer, employee, payment, health, or other personal data.
+- Session files, browser profiles, logs, uploads, and private documents.
+- Virtual environments, dependency caches, build output, and large generated
+  files that are not needed for analysis.
+- Anything a contract, employer, client, or regulation prohibits sharing.
+
+Recommended safeguards
+----------------------
+- Obtain explicit permission from the project owner.
+- Use a dedicated staging environment with synthetic test data.
+- Create a sanitized source copy and review its file list before starting.
+- Limit the target scope, scan duration, budget, and allowed techniques.
+- Do not test production unless production testing is explicitly authorized.
+- Use a provider/account configuration approved for the project's data class.
+- Never paste or store secrets in scan instructions.
+- Review findings manually before treating them as confirmed vulnerabilities.
+
+Advantages
+----------
+- Can provide capable reasoning and tool planning without running a large model
+  on your own computer; actual performance depends on the chosen model.
+- Lower local hardware requirements than running a large model locally.
+
+Limitations
+-----------
+- Relevant assessment data is processed outside the local machine.
+- Requires trust in the provider and its security and data-handling terms.
+- May be prohibited for confidential, regulated, contractual, or client code.
+- Cloud model output can still contain mistakes and false positives.
+
+Good fit
+--------
+- Public or open-source projects.
+- Training applications and intentionally vulnerable labs.
+- Projects whose owner has approved cloud processing.
+- Sanitized staging projects without real secrets or personal data.
+
+
+LEVEL 3: MAXIMUM CONTROL
+============================================================
+
+Goal
+----
+Control each testing technique, request, data flow, and conclusion manually.
+
+How it works
+------------
+- Define a written scope and test plan.
+- Use individual local tools such as OWASP ZAP, Burp Suite, Semgrep,
+  dependency scanners, secret scanners, and network tools as appropriate.
+- A human tester selects and supervises each test.
+- Tools can be isolated, restricted to staging, and prevented from making
+  outbound connections.
+- Findings are manually reproduced, evaluated, prioritized, and documented.
+- Local AI may be added as an assistant, but it is not required.
+
+What may leave the machine
+--------------------------
+Nothing needs to leave the controlled environment if all tools, updates,
+documentation, and reporting are handled locally. Tool updates, cloud plugins,
+collaboration systems, or hosted vulnerability databases may create external
+connections and must be reviewed separately.
+
+Advantages
+----------
+- Most precise control over scope and potentially destructive actions.
+- Clear audit trail of which commands and requests were performed.
+- Easier to meet specialized legal, compliance, and client restrictions.
+- Human validation reduces blind trust in automated findings.
+
+Limitations
+-----------
+- Requires security knowledge and more tester time.
+- Coverage depends heavily on tester skill and the test plan.
+- Manual testing can be slower and more expensive.
+- It still cannot guarantee that every vulnerability will be found.
+
+Good fit
+--------
+- Production systems where every request must be controlled.
+- Formal client engagements with strict rules of engagement.
+- High-risk systems where automated agents are not permitted.
+- Tests that require strong evidence, reproducibility, and human judgment.
+
+
+QUICK COMPARISON
+============================================================
+
+Privacy First
+- AI model: Local
+- Project data: Kept local
+- Hardware need: High
+- Setup effort: Medium to high
+- AI test quality: Depends strongly on the local model and hardware
+- Human control: Medium
+
+Quality First
+- AI model: Cloud
+- Project data: Relevant sanitized content is sent to the provider
+- Hardware need: Low to medium
+- Setup effort: Low after provider authentication
+- AI test quality: Depends on the provider, model, configuration, and validation
+- Human control: Medium; scope and exclusions must be configured
+
+Maximum Control
+- AI model: Optional
+- Project data: Can be kept entirely local
+- Hardware need: Varies by tools
+- Setup effort: Medium to high
+- Test quality: Depends on tools, plan, and tester expertise
+- Human control: Highest
+
+
+DECISION RULE
+============================================================
+
+Choose Privacy First when information must remain local and local hardware is
+available.
+
+Choose Quality First when the owner explicitly approves cloud processing and a
+reviewed, sanitized copy can be used.
+
+Choose Maximum Control when a human must approve or supervise individual tests,
+especially for production or tightly regulated systems.
+
+If uncertain, start with Privacy First or Maximum Control. Moving to Quality
+First should be a deliberate project-specific decision, not a default consent.
+
+
+PER-PROJECT AUTHORIZATION CHECKLIST
+============================================================
+
+Before any scan, record:
+
+[ ] Project owner and written authorization
+[ ] Exact source directory, repository, application URL, and APIs in scope
+[ ] Environments allowed: local, staging, or production
+[ ] Test dates and time window
+[ ] Selected level: Privacy First, Quality First, or Maximum Control
+[ ] Whether an external AI/provider is allowed
+[ ] Files and data that must be excluded
+[ ] Techniques that are prohibited or require separate approval
+[ ] Rate limits, scan budget, and stop conditions
+[ ] Backup and recovery plan
+[ ] Where reports and evidence will be stored
+[ ] Who will validate and receive the findings
+
+
+CURRENT PROJECT EXAMPLE
+============================================================
+
+For the NeoBank ARIA training project in this workspace:
+
+- A Quality First source assessment completed on 29 October 2026 with Strix 1.7.0
+  and OpenAI Platform API model openai/gpt-5.4-mini.
+- It used a sanitized eight-file snapshot without the existing database, virtual
+  environment, logs, credentials, or unrelated private files. All eight original
+  target files were unchanged after the run; four generated cache files were
+  later removed.
+- The six Python/dependency files are published in neobank-project/. Its README
+  and .gitignore were repackaged for students; do not assume the current package
+  is byte-for-byte identical to the historical eight-file target.
+- Strix used its connected cloud model. Validation of NeoBank used fictional
+  data and simulated application-model replies; no deployed bank was tested.
+- The run made 163 requests and reported an estimated model cost of USD 2.24.
+  This is not a promised future cost or independently verified invoice.
+- The linked ChatGPT Pro route was not pursued for this demonstration after the
+  presenter learned about the possible approval requirement. An API key is a
+  separate connection method and still remains subject to safeguards.
+- The hidden key prompt cleared its temporary environment variables afterward.
+  Strix also saved a key setting in C:\Users\harit\.strix\cli-config.json, outside
+  this repository. That private configuration is not included in GitHub.
+- Reviewed findings: docs/reports/NEOBANK_STRIX_RESULTS.txt
+- Saved evidence: strix_runs/neobank-quality-sanitized-202610_df70/
+- A new learner must install and check their own tools and model connection;
+  this repository does not include the presenter's installed runtime or keys.

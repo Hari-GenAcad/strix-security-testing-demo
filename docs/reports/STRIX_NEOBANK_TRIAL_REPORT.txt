@@ -1,0 +1,529 @@
+STRIX NEOBANK TRIAL REPORT
+==========================
+
+Trials: 29 October 2026
+Publication review: 8 November 2026
+
+This is a historical account, not a current provider catalog or a promise of
+model access. Model identifiers, quotas, availability, pricing, and program terms
+may change. Only the completed OpenAI example is distributed with this demo;
+the earlier interrupted Gemini state is not part of the published package.
+
+
+1. PURPOSE
+----------
+
+The objective was to evaluate the open-source Strix penetration-testing agent
+against the NeoBank Agent workshop project and determine whether Strix could be
+used as a simple, repeatable student exercise.
+
+The intended classroom workflow was:
+
+1. Give students a repository or let them use an authorized project.
+2. Let each student run Strix against the project.
+3. Have Strix produce security findings.
+4. Ask students to validate and report those findings.
+
+
+2. SAFETY AND SCOPE PREPARATION
+-------------------------------
+
+A sanitized copy of NeoBank was created for testing at this historical location
+on the demonstration computer (not a path students need to recreate):
+
+    D:\pentesting\.scan-targets\neobank-quality-sanitized-20261028
+
+That sanitized target contained eight source and documentation files. It excluded
+the environment file, the original database, virtual environments, caches,
+logs, and unrelated generated files.
+
+The scan instructions limited Strix to the supplied local source. They prohibited
+contacting unrelated systems, using real credentials or production data, calling
+the live OpenAI API from the tested application, and modifying the mounted target.
+
+For the completed scan, SHA-256 comparisons confirmed that the original project
+and all eight allowlisted target files were unchanged. Python generated four
+disposable .pyc cache files; those were removed during later cleanup.
+
+The public source is now in neobank-project/. Its six Python/dependency files
+retain the scanned content; the README and .gitignore were repackaged for readers.
+The current eight-file package is not claimed to be byte-for-byte identical to
+the historical eight-file snapshot.
+
+
+3. STRIX PREPARATION AND VERIFICATION
+-------------------------------------
+
+Strix 1.7.0 was installed and its command-line launcher was verified.
+
+The Strix security sandbox was tested independently. A sandbox container could
+start, reach its ready state, and expose its internal testing service.
+
+A Windows terminal-transport defect caused non-interactive commands inside the
+sandbox to return blank output. The defect was reproduced independently and
+traced to the Python Docker transport closing a Windows named-pipe connection
+when the agent attempted a write-side-only socket shutdown.
+
+A narrowly scoped compatibility launcher was added. It changes only that socket
+half-close behavior and does not change model safety settings, provider policies,
+or scan prompts.
+
+The repaired terminal path passed all of the following tests:
+
+- Standard-output capture
+- Standard-error capture
+- Delayed command output
+- TTY command output
+- Reading the sanitized project through a read-only mount
+- Strix 1.7.0 command-line startup
+
+This established that Strix could execute tools and receive their output on the
+demonstration computer. The separate diagnostic read-only mount did not make the
+actual Strix target read-only: selected local source folders are writable.
+
+
+4. LINKED CHATGPT SUBSCRIPTION ROUTE — NOT PURSUED
+-------------------------------------------------
+
+After learning that the intended cybersecurity use could require appropriate
+Daybreak / Trusted Access for Cyber approval, the presenter chose not to pursue
+the linked ChatGPT Pro route for this demonstration. No application was submitted.
+It is an unpursued option, not a demonstrated failed route in the video.
+
+Access review considers the intended cybersecurity use. Approval and a review
+time are not guaranteed, and any approval must cover the relevant account,
+model, tool connection, and product surface. Ordinary subscription access does
+not automatically establish that permission. Plan limits still apply.
+
+The paid API route described later is separate; it does not bypass safeguards.
+
+
+5. GEMINI API ATTEMPTS
+----------------------
+
+A launcher was created that asks for the Gemini API key through a hidden
+PowerShell prompt. It removed its temporary environment variables afterward and
+did not write the key to NeoBank, the instructions, or the console log. Strix can
+persist provider settings separately in the user's local configuration; hidden
+input is not a guarantee that no credential is saved on disk.
+
+The launcher directly queried Google's model catalog and confirmed that the key
+was valid.
+
+Initial Gemini requests encountered intermittent provider-side failures:
+
+- HTTP 503 Service Unavailable
+- The server closing an expected keep-alive connection
+
+Bounded retries, fresh HTTP connections, TLS 1.2, and automatic fallback through
+available Flash models were added. These changes eventually produced a successful
+direct response from Gemini.
+
+Strix initially selected:
+
+    gemini/gemini-3.8-flash
+
+The direct Google request succeeded at least once, but Strix's model preflight did
+not answer within its original 30-second timeout or an increased 120-second
+timeout. This showed a difference between a small direct Gemini request and
+Strix's larger agent preflight request.
+
+Streaming was then disabled to match the successful direct request, and the
+launcher was changed to step down through available Flash and Flash-Lite models
+only when Strix failed during model preflight.
+
+The first model that successfully passed both the direct test and Strix preflight
+was:
+
+    gemini/gemini-3.6-flash
+
+
+6. SUCCESSFULLY STARTED GEMINI SCAN
+-----------------------------------
+
+Strix successfully initiated a real NeoBank scan with Gemini 3.6 Flash.
+
+Run identifier:
+
+    neobank-quality-sanitized-202610_5383
+
+This historical interrupted run is described here for context. Its partial state
+is not included in the published demonstration repository.
+
+The scan created multiple analysis agents, including agents focused on static
+analysis, agent/LLM security, and database/authentication concerns. It ran for
+approximately five minutes.
+
+Recorded activity before termination:
+
+- 54 request records
+- Approximately 1.2 million total tokens recorded by Strix
+- 8,890 output tokens
+- Several specialized analysis agents started
+
+The scan then stopped with Google's HTTP 429 RESOURCE_EXHAUSTED response.
+For this account and model on 29 October, Google's response reported a free-tier
+quota of 20 generation requests per project per day and said it was exceeded.
+This is a historical observed limit, not a universal current Gemini allowance.
+
+Google's response requested waiting approximately 22 hours for that quota window.
+Strix preserved partial state at that time. Resumption was not demonstrated and
+is not available from the published completed-example package.
+
+
+7. GEMINI RESULTS AT THAT STAGE
+-------------------------------
+
+The Gemini scan did not complete.
+
+Recorded result at that stage:
+
+- Completed validated findings: 0
+- Coverage: incomplete
+- Recorded coverage gaps: 10
+- Run state at the time: preserved for possible resume, not included publicly
+- Original NeoBank source: unchanged
+- Sanitized NeoBank source: unchanged
+
+Zero findings must not be interpreted as a clean security assessment. The scan
+ended before Strix could finish validation and reporting.
+
+The historical run metadata remained marked as running although execution had
+stopped at a persistent provider rate limit. This is why status must be checked
+against the transcript and report, not accepted in isolation.
+
+
+8. BLOCKERS ENCOUNTERED
+-----------------------
+
+The relevant Strix and provider blockers were:
+
+1. Strix terminal transport
+   Non-interactive sandbox commands returned blank output on Windows until the
+   named-pipe half-close compatibility fix was applied.
+
+2. Sandbox certificate initialization
+   The locally available Strix sandbox certificate material was unusable. A local
+   sandbox image with a valid P-256 testing certificate was built and verified.
+
+3. Linked-account access uncertainty
+   The linked ChatGPT route was not pursued after the approval requirement was
+   learned. It was not counted as a completed or failed scan in this demo.
+   Paid API accounts also remain subject to cybersecurity safeguards.
+
+4. Gemini service availability
+   Gemini intermittently returned HTTP 503 and closed connections during small
+   test requests.
+
+5. Gemini/Strix preflight compatibility
+   Gemini 3.8 Flash could answer a small direct request but repeatedly timed out
+   on Strix's larger model preflight. Disabling streaming and selecting a smaller
+   available model allowed Strix to proceed.
+
+6. Observed free-tier request limits
+   The Gemini 3.6 Flash scan started but exceeded the account's observed daily
+   20-generation-request quota before the assessment completed.
+
+7. Agentic resource consumption
+   Strix uses many large model calls across several agents. A single incomplete
+   quick scan recorded 54 requests and roughly 1.2 million tokens. This is much
+   heavier than an ordinary chatbot interaction and does not fit comfortably
+   within small hosted-model free tiers.
+
+
+9. OPTIONS CONSIDERED — HISTORICAL, NOT CURRENT ENDORSEMENTS
+-----------------------------------------------------------
+
+These were planning options during the trials. Their present availability,
+pricing, compatibility, and eligibility must be checked before a new attempt.
+
+OPTION A: RESUME AFTER GEMINI'S FREE QUOTA RESETS
+
+At the time, resuming after the daily Gemini quota reset was considered. The
+interrupted state is not part of this public package.
+
+Advantages:
+- No immediate payment is required.
+- Existing partial state can be reused.
+
+Limitations:
+- Another 20 requests may still be insufficient.
+- Completion could require several daily quota windows.
+- Provider availability and model behavior may vary between attempts.
+- It is not a dependable classroom workflow.
+
+
+OPTION B: ENABLE PAID GEMINI API BILLING
+
+Using a billed Gemini project was considered. This was not tested here, and
+resuming the earlier partial run is not a published workflow.
+
+Advantages:
+- Higher request limits are more appropriate for a multi-agent scan.
+- The earlier Gemini preflight configuration might be reusable, subject to
+  current model availability; a complete Gemini scan was not demonstrated.
+
+Limitations:
+- Usage can incur charges.
+- It does not satisfy a strictly zero-cost classroom requirement.
+- Spending controls reduce risk but do not make usage guaranteed free.
+
+
+OPTION C: OPENROUTER WITH PAID GLM 5.3
+
+Historical documentation reviewed during the trial discussed GLM 5.3 through
+OpenRouter or Vercel AI Gateway. No such run was performed here.
+
+Advantages:
+- Designed for long-context reasoning and tool use.
+- Provides an alternative provider route, subject to its own access rules.
+- OpenRouter can provide routing and provider failover.
+
+Limitations:
+- The GLM 5.3 endpoint reviewed at that time was paid.
+- Every scan consumes provider credits.
+- Student keys, spending limits, and account management would be required.
+
+
+OPTION D: OPENROUTER GLM 5.3 FLASH FREE
+
+Historical notes recorded this endpoint; it was not tested and may no longer be
+available under the same name or terms:
+
+    openrouter/z-ai/glm-5.3-flash:free
+
+Advantages:
+- Token price was listed as zero when reviewed during the trial.
+- It may be capable enough for agentic coding tasks.
+
+Limitations:
+- The ordinary free allowance reviewed then was approximately 50 requests a day.
+- Its documented allowance included failed requests at that time.
+- The incomplete Gemini scan already recorded 54 requests.
+- It is therefore likely to stop before a Strix scan completes.
+- Availability, retention, and provider policies must be reviewed.
+
+This route has not been configured or tested.
+
+
+OPTION E: CHATGPT PRO API CREDITS
+
+The trial considered whether available account credits could cover an OpenAI
+Platform API run. Subscription offers, credit eligibility, amounts, expiry, and
+linking requirements are account-specific and may change; this guide does not
+promise that any ChatGPT subscription includes API credits.
+
+Advantages:
+- If an account has applicable API credits, those may cover usage until exhausted.
+- It may be useful for a single instructor demonstration.
+
+Limitations:
+- There is no special "Pro API key". A separate OpenAI Platform project key is
+  still required.
+- Eligibility, amount, and expiry must be checked in the account's current terms.
+- Do not assume any particular subscription supplies API credits to students.
+- API credits do not automatically grant Daybreak cybersecurity approval.
+- The project and model may still reject the Strix request.
+- Strix compatibility with the required Daybreak request selection has not been
+  verified.
+
+An OpenAI Platform API key later exposed gpt-5.4-mini and the scan completed, as
+documented in section 14. The run's model-cost estimate does not independently
+establish which credit or billing source paid for it.
+
+
+OPTION F: APPLY FOR OPENAI DAYBREAK ACCESS
+
+Submit an application for the appropriate defensive cybersecurity access and,
+if approved, configure an eligible API project and model.
+
+Advantages:
+- It is the documented OpenAI route for authorized cybersecurity work requiring
+  reduced refusals.
+
+Limitations:
+- Approval and review time are not guaranteed.
+- Approval can be tied to the organization, project, model, and product surface.
+- More advanced testing may require a separate approval level.
+- It does not by itself provide a free classroom-wide deployment.
+
+This application has not been submitted.
+
+
+OPTION G: LOCAL MODEL THROUGH OLLAMA OR LM STUDIO
+
+Run an open-weight model locally and configure Strix to use the local endpoint.
+
+Advantages:
+- No per-request cloud-model charge.
+- No repository source needs to be sent to a hosted model provider.
+- No hosted-provider daily request quota.
+
+Limitations:
+- Reliable Strix tool use generally requires a capable, large model.
+- Significant GPU memory, system memory, storage, and setup may be required.
+- Smaller models may produce malformed tool calls or weaker findings.
+- CPU-only execution may be very slow.
+- Student computers will have inconsistent capabilities.
+
+This route has not been configured or tested for NeoBank.
+
+
+OPTION H: STRIX MANAGED CLOUD OR CENTRAL INSTITUTIONAL SERVICE
+
+Use a centrally managed Strix deployment, institution-controlled provider, or
+prepared Linux/CI environment instead of requiring each student to configure
+Strix independently.
+
+Advantages:
+- Consistent versions and results.
+- Credentials remain centrally managed.
+- Students do not need individual Docker and model-provider configurations.
+
+Limitations:
+- Pricing, data handling, access, and institutional approval must be evaluated.
+- It is not guaranteed to be free.
+
+This route has not been evaluated beyond documentation review.
+
+
+10. ZERO-COST CLASSROOM ASSESSMENT
+----------------------------------
+
+These experiments did not establish a dependable zero-cost hosted-model route
+for every student. They do not prove that every current or future free provider
+must fail.
+
+On the tested account/model on 29 October, Gemini stopped at a reported daily
+20-generation-request quota. The OpenRouter allowance reviewed then was about
+50 requests a day and was not tested. The incomplete Gemini scan recorded 54
+request records and produced no final validated finding report. Request records
+and successful billed generations are not necessarily the same count.
+
+Creating separate free accounts or rotating free models would be unreliable and
+should not be used to evade provider limits. Sharing one instructor API key with
+students would expose credentials and make spending and attribution difficult.
+
+A genuinely zero-per-request Strix design would require a sufficiently powerful
+local or institution-hosted open-weight model. That moves the cost and complexity
+to institutional hardware and administration.
+
+
+11. OTHER TOOLS CONSIDERED
+---------------------------
+
+If the teaching team later decides to prioritize security-testing practice over
+using Strix specifically, the following tools are possible subjects for a
+separate exercise. They are not substitutes silently selected for this demo.
+
+Students can use conventional free tools such as:
+
+- Semgrep Community Edition for source-code rules
+- Bandit for Python security checks
+- pip-audit for vulnerable Python dependencies
+- OWASP ZAP for a locally running web application
+- Manual review for prompt injection, excessive agency, authorization, IDOR,
+  sensitive-data disclosure, and unsafe tool use
+
+Students can still produce a professional report containing scope, methodology,
+evidence, severity, reproduction steps, impact, remediation, and validation.
+
+The current video still teaches Strix setup, an authorized scan, and review of
+the completed Strix output. Any change to the student exercise is a teaching-team
+decision, not an outcome established by the trial.
+
+
+12. RECOMMENDED NEXT DECISION
+-----------------------------
+
+For the recorded NeoBank demonstration, use the saved completed output; another
+paid scan is unnecessary. The public repository includes its reviewed report,
+raw finding reports, status, coverage, usage, and logs.
+
+For remote learners, provide the sanitized source, scope, OS instructions,
+model-provider guidance, and published example. A learner who has suitable
+authorized model access can run Strix and submit their own evidence. Someone
+without access can review the supplied output but must label it as review of a
+provided scan, not their own completed scan. Decide costs and assessment criteria
+before requiring an independent run from every learner.
+
+
+13. FINAL STATUS
+----------------
+
+The earlier Gemini scan remained incomplete because its free-tier daily quota was
+too small. A later OpenAI Platform API attempt succeeded using gpt-5.4-mini and
+completed the sanitized NeoBank assessment. The completed result supersedes the
+earlier failed and interrupted runs.
+
+
+14. COMPLETED OPENAI API ASSESSMENT
+-----------------------------------
+
+An OpenAI Platform project API key was entered through a hidden local PowerShell
+prompt. The launcher's temporary environment variables were removed afterward;
+the key was not written to NeoBank, the instructions, or the console transcript.
+Strix did persist an LLM_API_KEY setting locally in
+C:\Users\harit\.strix\cli-config.json, outside this repository. That private
+configuration is not included in GitHub. Do not open it during a recording.
+
+Model compatibility was tested from smaller/older models upward:
+
+- gpt-4.1-mini authenticated but rejected Strix's required custom tool schema
+  with HTTP 400, `Invalid value: 'custom'`. It recorded no successful requests.
+- gpt-5.4-mini accepted the Strix tool schema and completed the scan.
+
+Completed run:
+
+  Run ID:             neobank-quality-sanitized-202610_df70
+  Model:              openai/gpt-5.4-mini
+  Status:             completed
+  Duration:           approximately 9 minutes 22 seconds
+  Findings:           1 High, 2 Medium
+  Requests:           163
+  Input tokens:       13,630,441
+  Cached input:       12,618,112
+  Output tokens:      119,152
+  Strix cost estimate: USD 2.24178915
+
+The run reported:
+
+1. Missing object-level authorization in query_account, allowing cross-user and
+   staff-account disclosure.
+2. Missing authorization across model-facing tools, including access to the
+   restricted internal-reference policy.
+3. Name-only login, allowing impersonation of known customer or staff names.
+
+Human review confirmed the underlying code paths. The first two Strix reports
+overlap on query_account. The deduplicated final root causes are:
+
+- Cross-user account access
+- Unrestricted internal-policy access
+- Name-only authentication
+
+Validation used fictional data and stubbed replies in place of NeoBank's live
+model calls. Strix still used its own connected model to assess the code. No
+running banking deployment or live NeoBank model attack was tested.
+
+The assessment also ruled out SQL injection in the reviewed parameterized SQLite
+queries, found no hardcoded API credentials in the sanitized target, and confirmed
+that logout/API-key changes clear stored session identity.
+
+All eight allowlisted source-file hashes still matched their original files after
+the scan. Python generated four disposable .pyc cache files under __pycache__;
+they were removed during workspace cleanup.
+
+Reviewed result summary, repository-relative:
+
+  docs/reports/NEOBANK_STRIX_RESULTS.txt
+
+Completed artifacts:
+
+  strix_runs/neobank-quality-sanitized-202610_df70/
+  strix_runs/neobank-quality-sanitized-202610_df70/console.log
+
+The successful run demonstrates that this configuration worked once on the
+demonstration computer. Models, accounts, versions, and results can differ. Its
+163 requests illustrate why learners need enough request allowance; historical
+free-tier examples do not establish every provider's current limit. The reported
+USD 2.24178915 is a model-cost estimate, not an independently verified invoice.

@@ -14,7 +14,7 @@ The project contains:
 
 - `app.py` — Streamlit user interface and login flow
 - `agent.py` — AI-agent setup and tools
-- `database.py` — in-memory SQLite data and query helpers
+- `database.py` — SQLite initialization and query helpers
 - `knowledge_base.py` — fictional banking policies
 - `seed_data.py` — fictional customer and transaction records
 - `requirements.txt` — Python dependencies
@@ -23,6 +23,9 @@ The project contains:
 
 Running the application is not required for a source scan. If your instructor
 asks you to run it, use Python 3.10 or newer and a virtual environment.
+The optional architecture/security-guide HTML pages are not included in this
+source-only snapshot, so those UI pages are unavailable. The application creates
+its own local SQLite database when started; that database is not supplied here.
 
 Windows PowerShell:
 

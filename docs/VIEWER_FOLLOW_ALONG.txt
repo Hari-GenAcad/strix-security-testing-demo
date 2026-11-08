@@ -1,0 +1,125 @@
+STRIX DEMO: VIEWER RESOURCE SHEET
+================================
+Updated: 8 November 2026
+This accompanies the video and the published demonstration repository. Only the Windows NeoBank run was verified
+locally. It is not a promise of identical installation or output on another OS.
+
+1. FIND THE TOOL AND INSTALL FOR YOUR OS
+
+Strix repository: https://github.com/usestrix/strix
+Installation and model setup: https://docs.strix.ai/quickstart
+Download options: https://github.com/usestrix/strix/releases
+
+Windows: install Docker Desktop; the example uses its WSL 2 Linux backend.
+  https://docs.docker.com/desktop/setup/install/windows-install/
+  Our local notes: docs/setup/WINDOWS_SETUP.txt
+
+Mac: install Docker Desktop for Apple Silicon or Intel as appropriate.
+  https://docs.docker.com/desktop/setup/install/mac-install/
+  Our reference notes: docs/setup/MAC_SETUP.txt
+  Verify the sandbox's actual architecture support; it was not tested here.
+
+Linux: use Docker's instructions for your distribution.
+  https://docs.docker.com/engine/install/
+
+Mac/Linux users do not install WSL. Do not run the Windows .ps1 launcher there.
+For Mac/Linux Strix installation, the official quickstart provides an installer
+and a pipx option. Follow it for your OS rather than copying PowerShell commands.
+
+Check readiness:
+  docker info
+  docker run --rm hello-world
+  strix --version
+
+2. SET UP MODEL ACCESS
+
+Use a supported provider and enough quota for an automated scan:
+  https://docs.strix.ai/llm-providers/overview
+
+The billed route can use OpenAI or another Strix-supported provider. Check
+compatibility, credit balance, request allowance, and any access requirements.
+Our existing Windows launcher is specifically configured for OpenAI.
+
+Our saved example used OpenAI Platform API model openai/gpt-5.4-mini.
+It made 163 requests and estimated $2.24 in model usage. Future scans can differ.
+Confirm available access, quota, and billing before starting; do not assume
+an ordinary subscription or free tier covers the run.
+
+Set model/provider credentials using the provider's setup instructions. Keep
+credentials outside the target, screenshots, report, and Git history. Strix can
+save its provider configuration locally; do not share that configuration file.
+
+3. PREPARE THE TARGET
+
+Work only on a project you own or have permission to assess. Make a separate
+copy and include only what is needed for analysis and local validation.
+Keep source, required dependency descriptions, and relevant documentation.
+Exclude environment files, keys, real databases, personal data, dependency
+folders, caches, logs, and unrelated artifacts. Use fictional fixtures.
+Review code for embedded secrets too; filename exclusions are not enough.
+A .gitignore does not sanitize an existing directory.
+
+Strix mounts the selected local directory writable in Docker. Docker does not
+protect that folder against edits. Cloud models may receive source snippets.
+Keep an untouched original/backup and review changes after the scan.
+Source-only assessment does not establish that a deployed system is secure.
+
+4. WRITE SCOPE AND START A SCAN
+
+The provided NeoBank scope is scope.txt.
+It limits work to the local supplied source and fictional local validation,
+prohibits target edits/external targets, and avoids live calls from the app.
+Adapt its project-specific instructions before using it with another project.
+Scope instructions do not enforce filesystem or network isolation by themselves.
+
+After configuring your model, from the folder containing scope.txt:
+  strix -n --target ./neobank-project --scan-mode quick --scope-mode full --instruction-file ./scope.txt --max-budget 5 --max-turns 80
+
+For another project, replace ./neobank-project with the path of your reviewed copy. No Git
+connection or manual application Dockerfile is required for a local source scan.
+Strix handles its sandbox container; first use can download a large image.
+A sandbox image is the ready-made package of Linux and testing tools Docker
+uses to create that testing container.
+The budget is an estimate checked after responses and can be exceeded by calls
+already in progress. The turn limit applies to each agent separately.
+Reference: https://docs.strix.ai/usage/cli
+
+WINDOWS HELPER FROM YOUR CLONE'S ROOT:
+  .\scripts\RUN_NEOBANK_WITH_OPENAI.ps1 -DryRun
+  .\scripts\RUN_NEOBANK_WITH_OPENAI.ps1
+
+DryRun prints paths and arguments without reading a key or starting a scan.
+The actual helper reads a hidden key and copies only the supplied eight-file
+NeoBank source into a new disposable scan folder. It defaults to the model
+used in our example; change -Model only after confirming access and compatibility.
+There is no automatic fallback to other models. This is a NeoBank helper, not
+an arbitrary-project launcher. See docs/setup/MODEL_SETUP.txt for key storage.
+Do not start another scan just to read the example's existing results.
+
+5. REVIEW AND RECORD YOUR RESULTS
+
+Strix saves reports under strix_runs/<run-name>/.
+Start with penetration_test_report.md and the vulnerabilities/ folder.
+run.json contains status and usage; coverage.json describes coverage and gaps.
+findings.sarif is useful for tools that import structured security reports.
+An optional local dashboard: strix view <run-name>
+  https://docs.strix.ai/usage/viewer
+
+For this workspace:
+  docs/reports/NEOBANK_STRIX_RESULTS.txt
+  strix_runs/neobank-quality-sanitized-202610_df70/
+
+For each finding, record what the tool claims, the supporting source/test
+evidence, who is affected, any duplicates or unsupported assumptions, and a fix.
+If fixing code, use another copy. Retest the denied attack and normal allowed
+behavior. Check proposed fixes too: two public identifiers are not proof of
+identity. A failed or stopped scan is not a clean security result.
+
+Expected evidence for a hands-on attempt: target scope, prompt, status, usage,
+original reports, and your finding validation. If you cannot run a scan, you
+can study the saved example, but label it as review of supplied results.
+
+Troubleshooting: docs/setup/issuesyoumightcomeacross.txt
+The historical trial report is optional background. The plain-language findings,
+full original reports, coverage, usage and console transcript are published in
+this repository, so you can follow the saved example without a paid scan.

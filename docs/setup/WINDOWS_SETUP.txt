@@ -1,0 +1,248 @@
+STRIX ON WINDOWS: SETUP AND NEOBANK WALKTHROUGH
+==============================================
+Updated: 8 November 2026
+Reference run: Windows 11, Strix 1.7.0, 29 October 2026.
+The saved run is an example, not a promise of identical results or cost.
+
+1. WHAT YOU NEED
+----------------
+
+- A Windows installation supported by the current Docker Desktop release.
+- Docker Desktop using its WSL 2 Linux-container backend.
+- An installed version of Strix compatible with your Windows environment.
+- Access to a supported AI provider, enough request quota, and any required
+  authorization. See MODEL_SETUP.txt in this folder.
+- Several gigabytes of free disk space, plus room for downloads and temporary
+  files. The exact amount depends on the sandbox image and your project.
+- Permission to assess the supplied project.
+
+Strix coordinates the security test on your computer. Docker runs its Linux
+testing tools in a container. WSL 2 supplies Docker Desktop's Linux environment
+on this Windows setup. You do not need to put Strix itself inside Docker or
+write an application Dockerfile for this local source exercise.
+
+2. DOWNLOAD THIS EXERCISE
+-------------------------
+
+Repository:
+  https://github.com/Hari-GenAcad/strix-security-testing-demo
+
+With Git installed:
+  git clone https://github.com/Hari-GenAcad/strix-security-testing-demo.git
+  cd strix-security-testing-demo
+
+Or use GitHub's Code > Download ZIP, extract it, and open the extracted folder
+in PowerShell. All commands below start from that repository folder. It does
+not have to be on drive D: or use the author's original folder name.
+
+3. INSTALL AND CHECK WSL 2
+--------------------------
+
+Read Docker's current Windows requirements first:
+  https://docs.docker.com/desktop/setup/install/windows-install/
+
+Check PowerShell:
+  wsl --version
+  wsl --list --verbose
+
+If WSL is missing, follow the current Microsoft/Docker instructions. A supported
+installation route from Administrator PowerShell is:
+  wsl --install --no-distribution
+
+To update an existing WSL installation when needed:
+  wsl --update
+
+Restart if requested. Do not unregister WSL distributions or delete their data
+to fix a routine startup error. Use the troubleshooting guide to identify the
+actual cause.
+
+4. INSTALL AND CHECK DOCKER DESKTOP
+-----------------------------------
+
+Install from:
+  https://docs.docker.com/desktop/setup/install/windows-install/
+
+Start Docker Desktop, use Linux containers with the WSL 2 backend, and wait for
+the engine to be ready. Check both client and engine:
+  docker context ls
+  docker info
+  docker run --rm hello-world
+
+If another Docker context is active, select the context for the Linux engine.
+For a normal Docker Desktop installation this is usually:
+  docker context use desktop-linux
+
+A working docker --version alone is not enough. hello-world must successfully
+create and run a container before you try Strix.
+
+5. INSTALL AND CHECK STRIX
+--------------------------
+
+Use the current official Quick Start and release instructions:
+  https://docs.strix.ai/quickstart
+  https://github.com/usestrix/strix/releases
+
+Choose the installation option or native release that the official guide
+supports for your Windows environment. Do not paste a Mac/Linux Bash installer
+into Windows PowerShell. Follow the release instructions for installation and
+PATH setup, then open a fresh PowerShell window if needed.
+
+Verify:
+  strix --version
+  strix --help
+
+The author's saved run used Strix 1.7.0. Newer versions may change options,
+sandbox releases, model compatibility, and output. Record the version you use.
+
+The author's private portable runtime is not included in this repository and
+is not a prerequisite for viewers. Optional, version-specific Windows repair
+source is documented under scripts/windows-compat/. Start with an ordinary
+supported installation; apply a repair only after confirming the same problem.
+
+6. CONNECT YOUR AI MODEL
+------------------------
+
+Read:
+  docs/setup/MODEL_SETUP.txt
+  https://docs.strix.ai/llm-providers/overview
+
+You can use a supported billed API provider or an eligible linked account route
+with the necessary access. Paid access does not bypass provider security checks.
+Model availability, account permissions, billing, and request limits are separate
+things. Confirm them before starting.
+
+For the OpenAI helper in this repository, you enter your own OpenAI Platform API
+key privately at a hidden prompt. Do not put a key into source code, screenshots,
+chat messages, command arguments, or Git history.
+
+Strix can persist provider settings in its user configuration outside this
+repository. Hidden input does not mean the credential can never be saved on
+disk. Keep the configuration private and revoke keys you no longer need.
+
+7. REVIEW THE SUPPLIED TARGET AND SCOPE
+---------------------------------------
+
+The public target is neobank-project/. It contains eight files:
+  .gitignore
+  agent.py
+  app.py
+  database.py
+  knowledge_base.py
+  README.md
+  requirements.txt
+  seed_data.py
+
+It excludes API keys, environment files, existing databases, installed packages,
+caches, logs, and unrelated files. All NeoBank data is fictional. For another
+project, also check inside source files for embedded credentials; .gitignore
+does not sanitize an existing folder.
+
+Read scope.txt at the repository root. It limits the scan to local source and
+fictional validation, requires the target to remain unchanged, avoids unrelated
+external systems, and avoids live model calls from the banking application.
+
+Strix exposes the selected folder to its container with write access. Scope
+instructions guide behavior; they do not enforce a read-only mount or network
+isolation. Keep an untouched original and check the result afterward.
+
+8. CHECK THE HELPER WITHOUT SPENDING MONEY
+-----------------------------------------
+
+From the repository root in PowerShell:
+  .\scripts\RUN_NEOBANK_WITH_OPENAI.ps1 -Model gpt-5.4-mini -DryRun
+
+DryRun is a preparation check: it does not request an API key, call the provider,
+or start a scan. Read its output and resolve missing prerequisites first.
+
+The helper is an OpenAI/NeoBank convenience script, not an installer or a way
+around account access controls. It requires an installed Strix command. On the
+author's existing computer only, it can also use the optional private wrapper
+already present there.
+
+9. RUN THE NEOBANK SOURCE SCAN
+-------------------------------
+
+When Docker, Strix, model access, and billing are ready:
+  .\scripts\RUN_NEOBANK_WITH_OPENAI.ps1 -Model gpt-5.4-mini
+
+Paste your key at the hidden prompt. Do not enter it on camera. Model availability
+must be checked for your own account; this saved example does not guarantee it.
+
+The helper creates a fresh disposable copy under .scan-targets/ from the public
+eight-file target, records its hashes, and invokes Strix with the supplied scope.
+It uses quick mode, full source scope, an estimated USD 5 budget threshold, and
+80 maximum turns per agent. It checks the source afterward.
+
+The budget is an estimate checked after model responses, not a guaranteed cap.
+Calls already in progress can overshoot it. Monitor your provider usage too.
+The turn limit is per agent, not the total number of model requests.
+
+For a different provider, configure that provider using the official instructions
+and invoke Strix directly. Make a separate sanitized copy first:
+  strix -n --target "./my-project-sanitized" --scan-mode quick --scope-mode full --instruction-file "./scope.txt" --max-budget 5 --max-turns 80
+
+--target is the prepared project's location. --instruction-file is the location
+of your scope instructions. Strix asks Docker to create the testing container
+and makes that selected target available inside it. The first run may download
+a sandbox image: a ready-made package of Linux and testing tools.
+
+10. READ THE ALREADY COMPLETED EXAMPLE
+-------------------------------------
+
+No new scan is needed to follow the video. The published saved run is:
+  strix_runs/neobank-quality-sanitized-202610_df70/
+
+Start with:
+  docs/reports/NEOBANK_STRIX_RESULTS.txt
+  strix_runs/neobank-quality-sanitized-202610_df70/penetration_test_report.md
+  strix_runs/neobank-quality-sanitized-202610_df70/vulnerabilities/
+  strix_runs/neobank-quality-sanitized-202610_df70/console.log
+
+For usage and coverage:
+  strix_runs/neobank-quality-sanitized-202610_df70/run.json
+  strix_runs/neobank-quality-sanitized-202610_df70/coverage.json
+  strix_runs/neobank-quality-sanitized-202610_df70/findings.sarif
+
+The example completed in about 9 minutes 22 seconds using 163 requests, with a
+Strix model-cost estimate of USD 2.24. This is not an independently verified
+invoice. Other projects, models, and versions can take longer or cost more.
+
+Internal resumable state is not required to read reports and is not published.
+Read the saved evidence's README for any publication redactions and limitations.
+
+11. REVIEW FINDINGS AND SOURCE INTEGRITY
+----------------------------------------
+
+The saved example has three raw reports, with overlapping account-access
+evidence. The human review groups them into three issues: cross-user account
+access, unrestricted internal-policy access, and name-only authentication.
+
+Treat each finding as a claim to check. Read the cited source, reproduce only
+within the authorized fictional scope, merge duplicates, and check suggested
+fixes. Test both permitted behavior and an attempted forbidden action after a
+fix. A completed run does not establish complete coverage or prove security.
+
+The original run created four disposable Python cache files. The eight original
+target files were verified unchanged afterward. The console's integrity warning
+concerns those generated files, not a demonstrated source edit.
+
+For your own run, compare before/after hashes and inspect every extra file.
+Do not delete unknown files just because a scanner created a warning.
+
+12. TROUBLESHOOTING AND OPTIONAL REPAIRS
+---------------------------------------
+
+Read docs/setup/issuesyoumightcomeacross.txt for the observed storage, pagefile,
+WSL, Docker, terminal, model, quota, and output issues. These are historical
+examples, not a list of repairs every installation needs.
+
+Version-specific Windows compatibility source and the historical certificate
+repair Dockerfile are under scripts/windows-compat/. Their README explains the
+original symptoms and limitations. Do not install a testing certificate into
+the Windows trust store as part of this introductory exercise.
+
+Official references:
+  https://docs.strix.ai/quickstart
+  https://docs.strix.ai/usage/cli
+  https://docs.docker.com/desktop/setup/install/windows-install/
+  https://learn.microsoft.com/windows/wsl/troubleshooting-guide

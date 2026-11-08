@@ -1,0 +1,67 @@
+MODEL CONNECTION: READ THIS BEFORE STARTING A SCAN
+=================================================
+Updated: 8 November 2026
+
+Strix needs a model connection. Installing this repository does not provide a
+subscription, an API key, paid credits, or cybersecurity approval.
+
+PAID API ROUTE
+Use a provider supported by your installed Strix version:
+  https://docs.strix.ai/llm-providers/overview
+Check model compatibility, credits, request limits, and any cyber-access rules.
+A valid key alone does not guarantee a scan will be permitted or finish.
+
+Our completed Windows example used OpenAI Platform API with gpt-5.4-mini.
+That is a historical tested configuration, not a promise of access on another
+account or of compatibility with a future Strix release.
+
+Windows helper, from the cloned repository directory:
+  .\scripts\RUN_NEOBANK_WITH_OPENAI.ps1 -DryRun
+The dry run prints planned paths/arguments. It does not request a key, call the
+provider, create a container, or start a scan.
+
+To start a paid scan after reviewing scope and quota:
+  .\scripts\RUN_NEOBANK_WITH_OPENAI.ps1
+It prompts for your key with hidden input. You can explicitly select another
+compatible model using -Model MODEL_ID. It never silently moves to a more
+expensive model or retries a safety refusal through another model.
+
+The helper is specific to the supplied NeoBank source exercise. It creates a
+fresh eight-file scan copy; it does not send the whole repository, saved answers,
+or your original project. Mac/Linux use the regular Strix command in README.md
+and their provider's shell-specific setup instructions instead of this helper.
+The packaged helpers passed syntax checks and a fresh-folder dry run. A new paid
+scan was not run during publication; the completed evidence is the original run.
+
+OTHER PROVIDERS
+Use the official provider setup to configure STRIX_LLM and its credentials, then
+run the generic command in README.md. The OpenAI helper is not a universal API
+key launcher. Never paste a key into a committed command example or screenshot.
+
+LINKED CHATGPT ROUTE / ACCESS REVIEW
+The presenter did not pursue this route for the demo after learning it might
+need approval. Do not describe it as our failed scan attempt.
+For workflows requiring Daybreak access, use OpenAI's Trusted Access for Cyber
+process. Approval is not guaranteed; no guaranteed review time is stated in the
+linked guidance. Confirm the exact identity, organization/project, model, and
+tool/product surface covered. A ChatGPT Pro subscription is not automatic
+approval or a separately billed Platform API account.
+  https://learn.chatgpt.com/docs/cyber-safety
+  https://developers.openai.com/api/docs/guides/safety-checks/cybersecurity
+Do not change identities, models, or prompts to evade an access decision.
+
+WHERE THE KEY CAN BE SAVED
+The helper sets process environment variables for Strix, then restores their
+previous values. It does not embed your key in source or intentionally print it.
+Strix itself can persist the provider connection in ~/.strix/cli-config.json
+(on Windows, under your own user profile). Hidden input does not mean that no
+copy exists on disk. Do not open that file on camera, copy it into the project,
+commit it, or share it. Review reports/logs before distributing them as well.
+
+COST AND QUOTA
+The saved run made 163 model requests, taking about 9m22s, with a Strix estimate
+of $2.24. This is neither a price quote nor an independently verified invoice.
+Other runs can cost more. The example --max-budget is an estimated threshold,
+not a hard account spending cap; calls already in flight can exceed it.
+Check your own provider billing/usage controls. Small free-tier quotas may stop
+an agentic scan; the saved example can still be reviewed without a model/key.

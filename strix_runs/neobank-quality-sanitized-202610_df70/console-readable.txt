@@ -1,0 +1,1007 @@
+
+
+┌─ STRIX ─────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Penetration test initiated                                                 │
+│                                                                             │
+│  Target  D:\pentesting\.scan-targets\neobank-quality-sanitized-20261028     │
+│  Output  strix_runs/neobank-quality-sanitized-202610_df70                   │
+│                                                                             │
+│  Vulnerabilities will be displayed in real-time.                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─ VULN-0001 ─────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Vulnerability Report                                                       │
+│                                                                             │
+│  Title: Missing object-level authorization in ARIA `query_account`          │
+│                                                                             │
+│  Severity: MEDIUM                                                           │
+│                                                                             │
+│  CVSS Score: 6.5                                                            │
+│                                                                             │
+│  Target: neobank-quality-sanitized-20261028                                 │
+│                                                                             │
+│  CVSS Vector: AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N                           │
+│                                                                             │
+│  Description                                                                │
+│  The ARIA `query_account(user_id)` tool accepts a caller-supplied user ID   │
+│  and returns the matching account profile and transaction history without   │
+│  verifying that the requested record belongs to the logged-in user. Any     │
+│  authenticated customer can use the tool to read other customers' or staff  │
+│  records.                                                                   │
+│                                                                             │
+│  Impact                                                                     │
+│  A logged-in attacker can disclose another person's balance, profile        │
+│  details, fraud flags, and transaction history, including staff accounts.   │
+│  That breaks account isolation and exposes sensitive banking data across    │
+│  user and role boundaries.                                                  │
+│                                                                             │
+│  Technical Analysis                                                         │
+│  `app.py` establishes a session user ID after login and passes it into      │
+│  `create_aria_agent(...)`, but `agent.py:80-89` ignores that trusted        │
+│  identity and forwards the user-controlled `user_id` directly into          │
+│  `database.py:93-111`. The database helpers are plain `SELECT ... WHERE     │
+│  user_id = ?` lookups with no caller-context check, so the tool can return  │
+│  any row whose identifier is known. The shared validation note confirmed    │
+│  the tool returns arbitrary customer and staff records after a successful   │
+│  login.                                                                     │
+│                                                                             │
+│  PoC Description                                                            │
+│  1. Log in to the workshop app as any seeded customer.                      │
+│  2. Invoke the ARIA account lookup tool with a different known user ID,     │
+│  such as another customer or a staff account.                               │
+│  3. Observe that the tool returns the target's account details and          │
+│  transactions instead of rejecting the mismatched identifier.               │
+│                                                                             │
+│  PoC Code                                                                   │
+│  ```python                                                                  │
+│  # After logging in as any customer, call the tool with a different user    │
+│  ID.                                                                        │
+│  result = query_account("USR-STAFF-01")                                     │
+│  print(result)                                                              │
+│  # Expected vulnerable behavior: the response contains the staff account    │
+│  details                                                                    │
+│  # and transaction history instead of an access-denied error.               │
+│  ```                                                                        │
+│                                                                             │
+│  Code Locations                                                             │
+│                                                                             │
+│    Location 1: database.py:93-111                                           │
+│    Unscoped account lookup helpers                                          │
+│    def get_customer(conn: sqlite3.Connection, user_id: str) -> dict |       │
+│  None:                                                                      │
+│      """Retrieve a single customer by user_id."""                           │
+│      row = conn.execute(                                                    │
+│          "SELECT * FROM customers WHERE user_id = ?", (user_id,)            │
+│      ).fetchone()                                                           │
+│      if row is None:                                                        │
+│          return None                                                        │
+│      d = dict(row)                                                          │
+│      d["fraud_flags"] = json.loads(d.get("fraud_flags") or "[]")            │
+│      return d                                                               │
+│                                                                             │
+│                                                                             │
+│  def get_transactions(conn: sqlite3.Connection, user_id: str) ->            │
+│  list[dict]:                                                                │
+│      """Retrieve all transactions for a user_id, newest first."""           │
+│      rows = conn.execute(                                                   │
+│          "SELECT * FROM transactions WHERE user_id = ? ORDER BY date        │
+│  DESC",                                                                     │
+│          (user_id,),                                                        │
+│      ).fetchall()                                                           │
+│      return [dict(r) for r in rows]                                         │
+│                                                                             │
+│    Location 2: agent.py:57-91                                               │
+│    Bind `query_account` to the authenticated user                           │
+│    Fix:                                                                     │
+│    - def build_tools(conn):                                                 │
+│      """                                                                    │
+│      Build ARIA's tools. Both are intentionally vulnerable:                 │
+│      - lookup_policy: returns KB value verbatim (no spotlighting, no        │
+│  sanitisation)                                                              │
+│      - query_account: no ownership check — queries any user_id from SQLite  │
+│      """                                                                    │
+│                                                                             │
+│      @tool                                                                  │
+│      def lookup_policy(topic: str) -> str:                                  │
+│          """Look up a specific NeoBank policy by topic name.                │
+│          Call this when the customer asks about the content of a specific   │
+│  policy.                                                                    │
+│          The topic must be one of: transfer_limits, dispute_process,        │
+│          card_management, fraud_detection, account_verification,            │
+│  internal_reference_only."""                                                │
+│          logger.info(f"[TOOL] lookup_policy('{topic}')")                    │
+│          result = KNOWLEDGE_BASE.get(topic.strip().lower())                 │
+│          if result:                                                         │
+│              return result                                                  │
+│          return (                                                           │
+│              f"No policy found for topic: '{topic}'. "                      │
+│              f"Available topics are: {', '.join(KNOWLEDGE_BASE.keys())}"    │
+│          )                                                                  │
+│                                                                             │
+│      @tool                                                                  │
+│      def query_account(user_id: str) -> str:                                │
+│          """Look up account details and transactions for a user ID.         │
+│          Call this when the customer asks about account balance, details,   │
+│  or transactions.                                                           │
+│          Example user_id: 'USR-0042'."""                                    │
+│          logger.info(f"[TOOL] query_account('{user_id}')")                  │
+│          customer = get_customer(conn, user_id.strip())                     │
+│          if not customer:                                                   │
+│              return f"Account not found for user_id: {user_id}"             │
+│          transactions = get_transactions(conn, user_id.strip())             │
+│          return format_account_details(customer, transactions)              │
+│                                                                             │
+│      return [lookup_policy, query_account]                                  │
+│    + def build_tools(conn, current_user_id):                                │
+│      """                                                                    │
+│      Build ARIA's tools. query_account is scoped to the current             │
+│  authenticated user.                                                        │
+│      - lookup_policy: returns KB value verbatim (no spotlighting, no        │
+│  sanitisation)                                                              │
+│      - query_account: rejects mismatched user_id values before any          │
+│  database lookup                                                            │
+│      """                                                                    │
+│                                                                             │
+│      @tool                                                                  │
+│      def lookup_policy(topic: str) -> str:                                  │
+│          """Look up a specific NeoBank policy by topic name.                │
+│          Call this when the customer asks about the content of a specific   │
+│  policy.                                                                    │
+│          The topic must be one of: transfer_limits, dispute_process,        │
+│          card_management, fraud_detection, account_verification,            │
+│  internal_reference_only."""                                                │
+│          logger.info(f"[TOOL] lookup_policy('{topic}')")                    │
+│          result = KNOWLEDGE_BASE.get(topic.strip().lower())                 │
+│          if result:                                                         │
+│              return result                                                  │
+│          return (                                                           │
+│              f"No policy found for topic: '{topic}'. "                      │
+│              f"Available topics are: {', '.join(KNOWLEDGE_BASE.keys())}"    │
+│          )                                                                  │
+│                                                                             │
+│      @tool                                                                  │
+│      def query_account(user_id: str) -> str:                                │
+│          """Look up account details and transactions for a user ID.         │
+│          Call this when the customer asks about account balance, details,   │
+│  or transactions.                                                           │
+│          Example user_id: 'USR-0042'."""                                    │
+│          logger.info(f"[TOOL] query_account('{user_id}')")                  │
+│          requested_user_id = user_id.strip()                                │
+│          if requested_user_id != current_user_id:                           │
+│              return "Access denied: account lookups are limited to the      │
+│  signed-in user."                                                           │
+│          customer = get_customer(conn, current_user_id)                     │
+│          if not customer:                                                   │
+│              return f"Account not found for user_id: {current_user_id}"     │
+│          transactions = get_transactions(conn, current_user_id)             │
+│          return format_account_details(customer, transactions)              │
+│                                                                             │
+│      return [lookup_policy, query_account]                                  │
+│                                                                             │
+│    Location 3: agent.py:103                                                 │
+│    Pass the authenticated user into the tool builder                        │
+│    Fix:                                                                     │
+│    -     tools = build_tools(conn)                                          │
+│    +     tools = build_tools(conn, user_id)                                 │
+│                                                                             │
+│  Remediation                                                                │
+│  Bind account lookups to the server-side authenticated identity before any  │
+│  database read. Pass the current session user ID into the tool builder,     │
+│  reject any mismatched `user_id`, and add a regression test that confirms   │
+│  cross-user and staff IDs are denied even when the caller knows the         │
+│  identifier.                                                                │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ VULN-0002 ─────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Vulnerability Report                                                       │
+│                                                                             │
+│  Title: Missing authorization in ARIA tools exposes other customers'        │
+│  accounts and internal policy data                                          │
+│                                                                             │
+│  Severity: HIGH                                                             │
+│                                                                             │
+│  CVSS Score: 7.5                                                            │
+│                                                                             │
+│  Target: neobank-quality-sanitized-20261028                                 │
+│                                                                             │
+│  CVSS Vector: AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N                           │
+│                                                                             │
+│  Description                                                                │
+│  A low-privilege chat user can steer ARIA into calling `query_account` and  │
+│  `lookup_policy` with attacker-chosen arguments. Because the tools do not   │
+│  enforce ownership or role checks, the assistant discloses another          │
+│  customer's full account and the restricted internal treasury document.     │
+│                                                                             │
+│  Impact                                                                     │
+│  An attacker can read another customer's balance, contact details, fraud    │
+│  flags, and transaction history, then pivot to internal treasury,           │
+│  reserve-ratio, and fraud-override data that should be limited to Finance,  │
+│  Risk, and Compliance. The disclosure materially increases the risk of      │
+│  targeted fraud, phishing, and operational intelligence gathering.          │
+│                                                                             │
+│  Technical Analysis                                                         │
+│  `agent.py` binds two tools into the model loop: `lookup_policy(topic)`     │
+│  and `query_account(user_id)` (lines 64-90). Neither tool validates who is  │
+│  asking; `query_account` accepts any `user_id` and returns                  │
+│  `format_account_details(...)`, and `lookup_policy` returns any             │
+│  knowledge-base entry, including `internal_reference_only`.                 │
+│  `invoke_agent()` executes the first tool call emitted by the model and     │
+│  feeds the raw tool result back into the final answer, so a malicious       │
+│  prompt or prompt-injected turn can steer the assistant into these sinks.   │
+│  The prompt text in `agent.py` also tells the model that the tools handle   │
+│  permissions, but that claim is not enforced in code. In `app.py`, the      │
+│  chat flow forwards each user message directly into `invoke_agent`, so      │
+│  there is no separate application-layer authorization boundary before the   │
+│  tool execution path.                                                       │
+│                                                                             │
+│  The local proof-of-concept used an in-memory SQLite database and a         │
+│  stubbed model response to avoid the live API. On the original build, the   │
+│  same harness caused ARIA to disclose `USR-PP-001`'s full account and the   │
+│  restricted `internal_reference_only` document to a standard customer       │
+│  session. A patched scratch copy that adds caller binding to                │
+│  `query_account` and a staff-only gate for `internal_reference_only`        │
+│  returns access denied for both requests while preserving the benign        │
+│  own-account and public-policy paths.                                       │
+│                                                                             │
+│  PoC Description                                                            │
+│  1. Run the repository code in a disposable copy with an in-memory SQLite   │
+│  database and a stubbed model response.                                     │
+│  2. Force the agent to emit a `query_account` tool call for `USR-PP-001`    │
+│  while the logged-in principal is `USR-0042`.                               │
+│  3. Force the agent to emit a `lookup_policy` tool call for                 │
+│  `internal_reference_only` while the logged-in principal is a standard      │
+│  customer.                                                                  │
+│  4. Observe that the original build returns the other customer's full       │
+│  account and the internal treasury document.                                │
+│  5. Repeat the same harness against the patched scratch copy and confirm    │
+│  both requests are denied while the benign own-account and public-policy    │
+│  lookups still work.                                                        │
+│                                                                             │
+│  PoC Code                                                                   │
+│  ```python                                                                  │
+│  import sys                                                                 │
+│  import sqlite3                                                             │
+│  import types                                                               │
+│  from dataclasses import dataclass                                          │
+│  from functools import wraps                                                │
+│                                                                             │
+│  ROOT = sys.argv[1] if len(sys.argv) > 1 else "."                           │
+│  sys.path.insert(0, ROOT)                                                   │
+│                                                                             │
+│  class _BaseMessage:                                                        │
+│      def __init__(self, content="", **kwargs):                              │
+│          self.content = content                                             │
+│          for key, value in kwargs.items():                                  │
+│              setattr(self, key, value)                                      │
+│                                                                             │
+│  class _AIMessage(_BaseMessage):                                            │
+│      def __init__(self, content="", tool_calls=None, **kwargs):             │
+│          super().__init__(content, tool_calls=tool_calls or [], **kwargs)   │
+│                                                                             │
+│  class _ToolMessage(_BaseMessage):                                          │
+│      def __init__(self, content="", tool_call_id="", **kwargs):             │
+│          super().__init__(content, tool_call_id=tool_call_id, **kwargs)     │
+│                                                                             │
+│  class _ToolWrapper:                                                        │
+│      def __init__(self, func):                                              │
+│          wraps(func)(self)                                                  │
+│          self.func = func                                                   │
+│          self.name = func.__name__                                          │
+│                                                                             │
+│      def invoke(self, args):                                                │
+│          return self.func(**args) if isinstance(args, dict) else            │
+│  self.func(args)                                                            │
+│                                                                             │
+│                                                                             │
+│  def _tool(func):                                                           │
+│      return _ToolWrapper(func)                                              │
+│                                                                             │
+│  langchain_core = types.ModuleType("langchain_core")                        │
+│  messages_mod = types.ModuleType("langchain_core.messages")                 │
+│  tools_mod = types.ModuleType("langchain_core.tools")                       │
+│  messages_mod.HumanMessage = _BaseMessage                                   │
+│  messages_mod.AIMessage = _AIMessage                                        │
+│  messages_mod.SystemMessage = _BaseMessage                                  │
+│  messages_mod.ToolMessage = _ToolMessage                                    │
+│  tools_mod.tool = _tool                                                     │
+│  sys.modules["langchain_core"] = langchain_core                             │
+│  sys.modules["langchain_core.messages"] = messages_mod                      │
+│  sys.modules["langchain_core.tools"] = tools_mod                            │
+│                                                                             │
+│  langchain_openai = types.ModuleType("langchain_openai")                    │
+│  langchain_openai.ChatOpenAI = object                                       │
+│  sys.modules["langchain_openai"] = langchain_openai                         │
+│                                                                             │
+│  import agent  # type: ignore                                               │
+│  import database  # type: ignore                                            │
+│                                                                             │
+│  @dataclass                                                                 │
+│  class FakeLLM:                                                             │
+│      tool_name: str | None = None                                           │
+│      tool_args: dict | None = None                                          │
+│      call_count: int = 0                                                    │
+│                                                                             │
+│      def invoke(self, messages):                                            │
+│          self.call_count += 1                                               │
+│          if self.call_count == 1 and self.tool_name:                        │
+│              return _AIMessage(content="", tool_calls=[{"name":             │
+│  self.tool_name, "args": self.tool_args or {}, "id": "call-1"}])            │
+│          for message in reversed(messages):                                 │
+│              if message.__class__.__name__ == "_ToolMessage":               │
+│                  return _AIMessage(content=str(message.content))            │
+│          return _AIMessage(content="No tool result")                        │
+│                                                                             │
+│                                                                             │
+│  def run_case(principal_user_id, account_tier, tool_name, tool_args):       │
+│      conn = sqlite3.connect(":memory:")                                     │
+│      conn.row_factory = sqlite3.Row                                         │
+│      database.init_database(conn)                                           │
+│                                                                             │
+│      tools = agent.build_tools(conn) if                                     │
+│  agent.build_tools.__code__.co_argcount == 1 else agent.build_tools(conn,   │
+│  principal_user_id, account_tier)                                           │
+│      components = {                                                         │
+│          "llm": FakeLLM(),                                                  │
+│          "llm_with_tools": FakeLLM(tool_name=tool_name,                     │
+│  tool_args=tool_args),                                                      │
+│          "tools_by_name": {t.name: t for t in tools},                       │
+│          "system_prompt": "test",                                           │
+│      }                                                                      │
+│      return agent.invoke_agent(components, "test", [])                      │
+│                                                                             │
+│  print(run_case("USR-0042", "Standard", "query_account", {"user_id":        │
+│  "USR-0042"}))                                                              │
+│  print("---")                                                               │
+│  print(run_case("USR-0042", "Standard", "query_account", {"user_id":        │
+│  "USR-PP-001"}))                                                            │
+│  print("---")                                                               │
+│  print(run_case("USR-0042", "Standard", "lookup_policy", {"topic":          │
+│  "transfer_limits"}))                                                       │
+│  print("---")                                                               │
+│  print(run_case("USR-0042", "Standard", "lookup_policy", {"topic":          │
+│  "internal_reference_only"}))                                               │
+│  ```                                                                        │
+│                                                                             │
+│  Code Locations                                                             │
+│                                                                             │
+│    Location 1: agent.py:57-63                                               │
+│    Bind tools to the authenticated principal                                │
+│    Fix:                                                                     │
+│    - def build_tools(conn):                                                 │
+│      """                                                                    │
+│      Build ARIA's tools. Both are intentionally vulnerable:                 │
+│      - lookup_policy: returns KB value verbatim (no spotlighting, no        │
+│  sanitisation)                                                              │
+│      - query_account: no ownership check — queries any user_id from SQLite  │
+│      """                                                                    │
+│    + def build_tools(conn, principal_user_id: str, account_tier: str):      │
+│      """                                                                    │
+│      Build ARIA's tools. Both are intentionally vulnerable:                 │
+│      - lookup_policy: returns KB value verbatim (no spotlighting, no        │
+│  sanitisation)                                                              │
+│      - query_account: no ownership check — queries any user_id from SQLite  │
+│      """                                                                    │
+│                                                                             │
+│      is_staff = account_tier.strip().lower() == "staff"                     │
+│      public_topics = {                                                      │
+│          topic for topic in KNOWLEDGE_BASE.keys()                           │
+│          if topic != "internal_reference_only"                              │
+│      }                                                                      │
+│                                                                             │
+│    Location 2: agent.py:64-77                                               │
+│    Restrict policy lookup to staff-only internal topic                      │
+│    Fix:                                                                     │
+│    -     @tool                                                              │
+│      def lookup_policy(topic: str) -> str:                                  │
+│          """Look up a specific NeoBank policy by topic name.                │
+│          Call this when the customer asks about the content of a specific   │
+│  policy.                                                                    │
+│          The topic must be one of: transfer_limits, dispute_process,        │
+│          card_management, fraud_detection, account_verification,            │
+│  internal_reference_only."""                                                │
+│          logger.info(f"[TOOL] lookup_policy('{topic}')")                    │
+│          result = KNOWLEDGE_BASE.get(topic.strip().lower())                 │
+│          if result:                                                         │
+│              return result                                                  │
+│          return (                                                           │
+│              f"No policy found for topic: '{topic}'. "                      │
+│              f"Available topics are: {', '.join(KNOWLEDGE_BASE.keys())}"    │
+│          )                                                                  │
+│    +     @tool                                                              │
+│      def lookup_policy(topic: str) -> str:                                  │
+│          """Look up a specific NeoBank policy by topic name.                │
+│          Call this when the customer asks about the content of a specific   │
+│  policy.                                                                    │
+│          The topic must be one of: transfer_limits, dispute_process,        │
+│          card_management, fraud_detection, account_verification,            │
+│  internal_reference_only."""                                                │
+│          normalized_topic = topic.strip().lower()                           │
+│          logger.info(f"[TOOL] lookup_policy('{normalized_topic}')")         │
+│          if normalized_topic == "internal_reference_only" and not           │
+│  is_staff:                                                                  │
+│              return "Access denied: internal_reference_only is restricted   │
+│  to staff accounts."                                                        │
+│          if normalized_topic not in public_topics and normalized_topic !=   │
+│  "internal_reference_only":                                                 │
+│              return (                                                       │
+│                  f"No policy found for topic: '{topic}'. "                  │
+│                  f"Available topics are: {',                                │
+│  '.join(sorted(public_topics))}"                                            │
+│              )                                                              │
+│          result = KNOWLEDGE_BASE.get(normalized_topic)                      │
+│          if result:                                                         │
+│              return result                                                  │
+│          return (                                                           │
+│              f"No policy found for topic: '{topic}'. "                      │
+│              f"Available topics are: {', '.join(KNOWLEDGE_BASE.keys())}"    │
+│          )                                                                  │
+│                                                                             │
+│    Location 3: agent.py:79-90                                               │
+│    Enforce self-only account lookups                                        │
+│    Fix:                                                                     │
+│    -     @tool                                                              │
+│      def query_account(user_id: str) -> str:                                │
+│          """Look up account details and transactions for a user ID.         │
+│          Call this when the customer asks about account balance, details,   │
+│  or transactions.                                                           │
+│          Example user_id: 'USR-0042'."""                                    │
+│          logger.info(f"[TOOL] query_account('{user_id}')")                  │
+│          customer = get_customer(conn, user_id.strip())                     │
+│          if not customer:                                                   │
+│              return f"Account not found for user_id: {user_id}"             │
+│          transactions = get_transactions(conn, user_id.strip())             │
+│          return format_account_details(customer, transactions)              │
+│                                                                             │
+│      return [lookup_policy, query_account]                                  │
+│    +     @tool                                                              │
+│      def query_account(user_id: str) -> str:                                │
+│          """Look up account details and transactions for a user ID.         │
+│          Call this when the customer asks about account balance, details,   │
+│  or transactions.                                                           │
+│          Example user_id: 'USR-0042'."""                                    │
+│          requested_user_id = user_id.strip()                                │
+│          logger.info(f"[TOOL] query_account('{requested_user_id}')")        │
+│          if requested_user_id != principal_user_id:                         │
+│              return "Access denied: you may only query the signed-in        │
+│  customer's own account."                                                   │
+│          customer = get_customer(conn, requested_user_id)                   │
+│          if not customer:                                                   │
+│              return f"Account not found for user_id: {user_id}"             │
+│          transactions = get_transactions(conn, requested_user_id)           │
+│          return format_account_details(customer, transactions)              │
+│                                                                             │
+│      return [lookup_policy, query_account]                                  │
+│                                                                             │
+│    Location 4: agent.py:102                                                 │
+│    Pass caller context into the tool builder                                │
+│    Fix:                                                                     │
+│    -     tools = build_tools(conn)                                          │
+│    +     tools = build_tools(conn, user_id, account_tier)                   │
+│                                                                             │
+│  Remediation                                                                │
+│  Enforce caller-bound checks in `query_account` so the tool can only read   │
+│  the signed-in customer's own record, and restrict `lookup_policy` to       │
+│  customer-facing topics unless the caller is explicitly staff. Keep the     │
+│  authorization check in the tool layer itself; model instructions are not   │
+│  a security boundary. Align the system prompt with the real policy so it    │
+│  does not imply that the tools handle authorization for the application.    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ VULN-0003 ─────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Vulnerability Report                                                       │
+│                                                                             │
+│  Title: Name-only login allows account impersonation                        │
+│                                                                             │
+│  Severity: MEDIUM                                                           │
+│                                                                             │
+│  CVSS Score: 6.5                                                            │
+│                                                                             │
+│  Target: /workspace/neobank-quality-sanitized-20261028                      │
+│                                                                             │
+│  CVSS Vector: AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N                           │
+│                                                                             │
+│  Description                                                                │
+│  The login form authenticates NeoBank users by matching only the entered    │
+│  full name, so any known customer or staff name becomes a valid             │
+│  credential. An attacker who knows or guesses a real name can sign in as    │
+│  that person and inherit their session identity.                            │
+│                                                                             │
+│  Impact                                                                     │
+│  A low-privileged attacker can impersonate another customer or a staff      │
+│  account with no password, token, or second factor. That lets the attacker  │
+│  act under the victim's identity in the workshop app and opens the door to  │
+│  any identity-bound actions the UI or tools expose to that session.         │
+│                                                                             │
+│  Technical Analysis                                                         │
+│  `app.py:393-490` asks only for a full name and then calls                  │
+│  `authenticate_by_name(conn, name.strip())`. In `database.py:127-136`,      │
+│  `authenticate_by_name()` performs a case-insensitive lookup on             │
+│  `customers.name` and returns the matching row; no secret, second factor,   │
+│  or user ID is required. The result is that the first valid name entered    │
+│  becomes the authenticated session identity, including the staff account    │
+│  seeded in the workshop data.                                               │
+│                                                                             │
+│  PoC Description                                                            │
+│  1. Open the login form and enter a seeded name such as `Morgan Hayes`.     │
+│  2. Provide any OpenAI API key that passes the local workshop check.        │
+│  3. Submit the form and observe that the app signs in as the matching       │
+│  account.                                                                   │
+│  4. Repeat with a different valid name to impersonate a different customer  │
+│  or staff account.                                                          │
+│                                                                             │
+│  PoC Code                                                                   │
+│  ```python                                                                  │
+│  import sqlite3                                                             │
+│  from database import init_database, authenticate_by_name                   │
+│                                                                             │
+│  conn = sqlite3.connect(':memory:')                                         │
+│  conn.row_factory = sqlite3.Row                                             │
+│  init_database(conn)                                                        │
+│                                                                             │
+│  for name in ['Alex Mercer', 'Morgan Hayes', 'Adrian Cross']:               │
+│      customer = authenticate_by_name(conn, name)                            │
+│      print(name, '=>', customer['user_id'], customer['tier'])               │
+│  ```                                                                        │
+│                                                                             │
+│  Code Locations                                                             │
+│                                                                             │
+│    Location 1: app.py:18-19                                                 │
+│    Import the stronger authenticator                                        │
+│    from database import get_connection, init_database,                      │
+│  authenticate_by_name                                                       │
+│  from agent import create_aria_agent, invoke_agent                          │
+│    Fix:                                                                     │
+│    - from database import get_connection, init_database,                    │
+│  authenticate_by_name                                                       │
+│  from agent import create_aria_agent, invoke_agent                          │
+│    + from database import get_connection, init_database, authenticate_user  │
+│  from agent import create_aria_agent, invoke_agent                          │
+│                                                                             │
+│    Location 2: app.py:393-490                                               │
+│    Require a second login factor                                            │
+│            with st.form("login_form"):                                      │
+│              name = st.text_input(                                          │
+│                  "Full Name",                                               │
+│                  placeholder="e.g. Alex Mercer",                            │
+│              )                                                              │
+│                                                                             │
+│              submitted = st.form_submit_button(                             │
+│                  "Sign In",                                                 │
+│                  use_container_width=True,                                  │
+│              )                                                              │
+│                                                                             │
+│              if submitted:                                                  │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 1. Check API key exists                                  │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  api_key = st.session_state.get(                            │
+│                      "api_key",                                             │
+│                      "",                                                    │
+│                  ).strip()                                                  │
+│                                                                             │
+│                  if not api_key:                                            │
+│                      st.error(                                              │
+│                          "Please enter your OpenAI API key "                │
+│                          "in the sidebar."                                  │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 2. Verify API key with OpenAI                            │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  with st.spinner(                                           │
+│                      "Verifying OpenAI API key..."                          │
+│                  ):                                                         │
+│                      key_valid, key_error = (                               │
+│                          validate_openai_key(api_key)                       │
+│                      )                                                      │
+│                                                                             │
+│                  if not key_valid:                                          │
+│                      st.error(key_error)                                    │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 3. Check name                                            │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  if not name or not name.strip():                           │
+│                      st.error(                                              │
+│                          "Please enter your name to sign in."               │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 4. Authenticate NeoBank user                             │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  customer = authenticate_by_name(                           │
+│                      conn,                                                  │
+│                      name.strip(),                                          │
+│                  )                                                          │
+│                                                                             │
+│                  if not customer:                                           │
+│                      st.error(                                              │
+│                          "We couldn't find an account with "                │
+│                          "that name. Please check the spelling "            │
+│                          "and try again."                                   │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 5. Successful login                                      │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  st.session_state.logged_in = True                          │
+│                                                                             │
+│                  st.session_state.user_name = (                             │
+│                      customer["name"]                                       │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.user_id = (                               │
+│                      customer["user_id"]                                    │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.account_tier = (                          │
+│                      customer["tier"]                                       │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.messages = []                             │
+│                                                                             │
+│                  # Remember the exact API key that passed                   │
+│                  # OpenAI validation.                                       │
+│                  st.session_state.api_key_validated = (                     │
+│                      api_key                                                │
+│                  )                                                          │
+│                                                                             │
+│                  st.rerun()                                                 │
+│    Fix:                                                                     │
+│    -         with st.form("login_form"):                                    │
+│              name = st.text_input(                                          │
+│                  "Full Name",                                               │
+│                  placeholder="e.g. Alex Mercer",                            │
+│              )                                                              │
+│                                                                             │
+│              submitted = st.form_submit_button(                             │
+│                  "Sign In",                                                 │
+│                  use_container_width=True,                                  │
+│              )                                                              │
+│                                                                             │
+│              if submitted:                                                  │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 1. Check API key exists                                  │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  api_key = st.session_state.get(                            │
+│                      "api_key",                                             │
+│                      "",                                                    │
+│                  ).strip()                                                  │
+│                                                                             │
+│                  if not api_key:                                            │
+│                      st.error(                                              │
+│                          "Please enter your OpenAI API key "                │
+│                          "in the sidebar."                                  │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 2. Verify API key with OpenAI                            │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  with st.spinner(                                           │
+│                      "Verifying OpenAI API key..."                          │
+│                  ):                                                         │
+│                      key_valid, key_error = (                               │
+│                          validate_openai_key(api_key)                       │
+│                      )                                                      │
+│                                                                             │
+│                  if not key_valid:                                          │
+│                      st.error(key_error)                                    │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 3. Check name                                            │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  if not name or not name.strip():                           │
+│                      st.error(                                              │
+│                          "Please enter your name to sign in."               │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 4. Authenticate NeoBank user                             │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  customer = authenticate_by_name(                           │
+│                      conn,                                                  │
+│                      name.strip(),                                          │
+│                  )                                                          │
+│                                                                             │
+│                  if not customer:                                           │
+│                      st.error(                                              │
+│                          "We couldn't find an account with "                │
+│                          "that name. Please check the spelling "            │
+│                          "and try again."                                   │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 5. Successful login                                      │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  st.session_state.logged_in = True                          │
+│                                                                             │
+│                  st.session_state.user_name = (                             │
+│                      customer["name"]                                       │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.user_id = (                               │
+│                      customer["user_id"]                                    │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.account_tier = (                          │
+│                      customer["tier"]                                       │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.messages = []                             │
+│                                                                             │
+│                  # Remember the exact API key that passed                   │
+│                  # OpenAI validation.                                       │
+│                  st.session_state.api_key_validated = (                     │
+│                      api_key                                                │
+│                  )                                                          │
+│                                                                             │
+│                  st.rerun()                                                 │
+│    +         with st.form("login_form"):                                    │
+│              user_id = st.text_input(                                       │
+│                  "User ID",                                                 │
+│                  placeholder="e.g. USR-0042",                               │
+│              )                                                              │
+│              name = st.text_input(                                          │
+│                  "Full Name",                                               │
+│                  placeholder="e.g. Alex Mercer",                            │
+│              )                                                              │
+│                                                                             │
+│              submitted = st.form_submit_button(                             │
+│                  "Sign In",                                                 │
+│                  use_container_width=True,                                  │
+│              )                                                              │
+│                                                                             │
+│              if submitted:                                                  │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 1. Check API key exists                                  │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  api_key = st.session_state.get(                            │
+│                      "api_key",                                             │
+│                      "",                                                    │
+│                  ).strip()                                                  │
+│                                                                             │
+│                  if not api_key:                                            │
+│                      st.error(                                              │
+│                          "Please enter your OpenAI API key "                │
+│                          "in the sidebar."                                  │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 2. Verify API key with OpenAI                            │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  with st.spinner(                                           │
+│                      "Verifying OpenAI API key..."                          │
+│                  ):                                                         │
+│                      key_valid, key_error = (                               │
+│                          validate_openai_key(api_key)                       │
+│                      )                                                      │
+│                                                                             │
+│                  if not key_valid:                                          │
+│                      st.error(key_error)                                    │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 3. Check required fields                                 │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  if not user_id or not user_id.strip():                     │
+│                      st.error(                                              │
+│                          "Please enter your user ID to sign in."            │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  if not name or not name.strip():                           │
+│                      st.error(                                              │
+│                          "Please enter your name to sign in."               │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 4. Authenticate NeoBank user                             │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  customer = authenticate_user(                              │
+│                      conn,                                                  │
+│                      user_id.strip(),                                       │
+│                      name.strip(),                                          │
+│                  )                                                          │
+│                                                                             │
+│                  if not customer:                                           │
+│                      st.error(                                              │
+│                          "We couldn't verify that user ID and "             │
+│                          "name combination. Please check both "             │
+│                          "fields and try again."                            │
+│                      )                                                      │
+│                      return                                                 │
+│                                                                             │
+│                  # ─────────────────────────────                            │
+│                  # 5. Successful login                                      │
+│                  # ─────────────────────────────                            │
+│                                                                             │
+│                  st.session_state.logged_in = True                          │
+│                                                                             │
+│                  st.session_state.user_name = (                             │
+│                      customer["name"]                                       │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.user_id = (                               │
+│                      customer["user_id"]                                    │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.account_tier = (                          │
+│                      customer["tier"]                                       │
+│                  )                                                          │
+│                                                                             │
+│                  st.session_state.messages = []                             │
+│                                                                             │
+│                  # Remember the exact API key that passed                   │
+│                  # OpenAI validation.                                       │
+│                  st.session_state.api_key_validated = (                     │
+│                      api_key                                                │
+│                  )                                                          │
+│                                                                             │
+│                  st.rerun()                                                 │
+│                                                                             │
+│  Remediation                                                                │
+│  Require a second factor that is not publicly guessable, such as a user ID  │
+│  plus name, a one-time code, or another verified secret. Update the login   │
+│  form to collect the additional factor and switch the authentication call   │
+│  to a verifier that checks both fields before creating the session. Do not  │
+│  treat a display name as sufficient proof of identity.                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─ STRIX ─────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Penetration test in progress                                               │
+│                                                                             │
+│  Model openai/gpt-5.4-mini                                                  │
+│  Vulnerabilities 3                                                          │
+│  HIGH: 1 | MEDIUM: 2                                                        │
+│                                                                             │
+│  Input Tokens 13.6M  ·  Cached Tokens 12.6M                                 │
+│  Output Tokens 119.2K  ·  Cost $2.2418                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+┌─ STRIX ─────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Penetration test summary                                                   │
+│                                                                             │
+│  # Executive Summary                                                        │
+│                                                                             │
+│  The workshop target exposes three meaningful weaknesses in the AI banking  │
+│  flow. The highest-risk issue is the model/tool boundary: a normal chat     │
+│  user can steer ARIA into disclosing another customer’s account data and    │
+│  the restricted internal treasury policy document. A second issue lets an   │
+│  attacker authenticate as any seeded customer or staff member using only a  │
+│  public full name, and a third allows cross-user account reads through the  │
+│  account lookup tool.                                                       │
+│                                                                             │
+│  Overall posture: elevated for a training target, with one high-severity    │
+│  disclosure path and two medium-severity authentication / object-access     │
+│  weaknesses. The SQLite query layer itself is not the problem; the exposed  │
+│  authority sits in the agent/tool design and the name-only login flow.      │
+│                                                                             │
+│  # Methodology                                                              │
+│                                                                             │
+│  This was a source-aware white-box assessment of the local workshop         │
+│  repository. The review combined static triage of `app.py`, `agent.py`,     │
+│  `database.py`, `knowledge_base.py`, and `seed_data.py` with bounded        │
+│  static analysis artifacts, in-memory SQLite validation, and stubbed model  │
+│  responses so the live OpenAI API was not required. Validation focused on   │
+│  prompt/tool abuse, internal-data disclosure, authentication strength,      │
+│  object-level authorization, and SQLite/query handling, with negative       │
+│  checks for SQL injection and session-reuse behavior.                       │
+│                                                                             │
+│  # Technical Analysis                                                       │
+│                                                                             │
+│  The core issue is that ARIA treats model instructions as if they were an   │
+│  authorization boundary. In `agent.py`, the `lookup_policy` and             │
+│  `query_account` tools accept attacker-influenced arguments with no         │
+│  ownership or role checks, and the agent executes the first tool call       │
+│  emitted by the model before reflecting the raw result back into the final  │
+│  answer. That means a standard customer session can be steered to retrieve  │
+│  another customer’s account or the internal-only treasury reference, which  │
+│  materially increases the risk of targeted fraud and sensitive operational  │
+│  disclosure.                                                                │
+│                                                                             │
+│  A separate authentication weakness exists in `app.py` and `database.py`:   │
+│  the login form authenticates by full name only. Any seeded customer or     │
+│  staff name becomes a valid credential, so an attacker who knows or         │
+│  guesses a real name can sign in as that person and inherit the session     │
+│  identity. The database helpers themselves use parameterized SQL and did    │
+│  not show injection behavior, and the logout / API-key refresh path does    │
+│  clear session identity state, so those areas were ruled out rather than    │
+│  reported.                                                                  │
+│                                                                             │
+│  # Recommendations                                                          │
+│                                                                             │
+│  **Immediate**                                                              │
+│  - Bind every account lookup to the server-side authenticated principal     │
+│  before any database read.                                                  │
+│  - Restrict internal policy topics to staff-only sessions and return        │
+│  access-denied errors for standard users.                                   │
+│  - Replace name-only login with a real second factor or a verified account  │
+│  secret.                                                                    │
+│                                                                             │
+│  **Short-term**                                                             │
+│  - Add regression tests for cross-user account reads, staff-account         │
+│  access, and restricted policy disclosure.                                  │
+│  - Align the system prompt with the real authorization model so it does     │
+│  not imply the tools enforce security.                                      │
+│                                                                             │
+│  **Medium-term**                                                            │
+│  - Add a narrow authorization layer around all model-facing tools, not      │
+│  just `query_account`.                                                      │
+│  - Keep the SQLite helpers parameterized and preserve the current           │
+│  session-reset behavior, which already helps prevent identity reuse across  │
+│  turns.                                                                     │
+│                                                                             │
+│  **Retest guidance**                                                        │
+│  - Re-run the tool-boundary harness after the authorization fix and         │
+│  confirm that own-account and public-policy paths still work while          │
+│  cross-user and internal-only requests fail.                                │
+│                                                                             │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+
+┌─ STRIX ─────────────────────────────────────────────────────────────────────┐
+│                                                                             │
+│  Penetration test completed                                                 │
+│                                                                             │
+│  Target  D:\pentesting\.scan-targets\neobank-quality-sanitized-20261028     │
+│  Vulnerabilities  HIGH: 1 | MEDIUM: 2 (Total: 3)                            │
+│                                                                             │
+│  Input Tokens 13.6M  ·  Cached Tokens 12.6M  ·  Output Tokens 119.2K  ·     │
+│  Cost $2.2418                                                               │
+│                                                                             │
+│  Output  D:\pentesting\strix_runs\neobank-quality-sanitized-202610_df70     │
+│                                                                             │
+│  View    strix view neobank-quality-sanitized-202610_df70                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+strix.ai  ·  docs.strix.ai  ·  discord.gg/strix-ai
+
+Source verification: changes detected; review required.
+D:\pentesting\.scan-targets\neobank-quality-sanitized-20261028\__pycache__\agent.cpython-313.pyc
+D:\pentesting\.scan-targets\neobank-quality-sanitized-20261028\__pycache__\database.cpython-313.pyc
+D:\pentesting\.scan-targets\neobank-quality-sanitized-20261028\__pycache__\knowledge_base.cpython-313.pyc
+D:\pentesting\.scan-targets\neobank-quality-sanitized-20261028\__pycache__\seed_data.cpython-313.pyc
+Strix exit code: 0
+
+

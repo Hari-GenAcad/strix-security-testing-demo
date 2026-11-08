@@ -6,11 +6,16 @@
 .scan-targets/
 .holding/
 
-# Instructor-only and local workspace material
-docs/
-scripts/
+# Presenter-only material; public guides/evidence live alongside it
+docs/demo/
+docs/curriculum/
 strix.ps1
+# Ignore future runs, publish only the reviewed completed example
 strix_runs/
+!strix_runs/
+strix_runs/*
+!strix_runs/neobank-quality-sanitized-202610_df70/
+strix_runs/neobank-quality-sanitized-202610_df70/.state/
 week6_neobank_aria_agent-main/
 
 # Backup archives
@@ -35,9 +40,14 @@ backups/
 **/*.pem
 **/*.key
 **/*.p12
+**/.strix/
+**/cli-config.json
+**/*-auth.json
 
 # Temporary logs and editor files
 **/*.log
+!strix_runs/neobank-quality-sanitized-202610_df70/strix.log
+!strix_runs/neobank-quality-sanitized-202610_df70/console.log
 .vscode/
 .idea/
 Thumbs.db
