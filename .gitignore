@@ -1,0 +1,44 @@
+# Local Strix runtime and downloaded tools
+.tools/
+.tmp/
+
+# Local scan inputs and unrelated held files
+.scan-targets/
+.holding/
+
+# Instructor-only and local workspace material
+docs/
+scripts/
+strix.ps1
+strix_runs/
+week6_neobank_aria_agent-main/
+
+# Backup archives
+backups/
+
+# Python environments and generated files
+**/.venv/
+**/venv/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+
+# Local application data
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# Credentials and environment files
+**/.env
+**/.env.*
+!**/.env.example
+**/*.pem
+**/*.key
+**/*.p12
+
+# Temporary logs and editor files
+**/*.log
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

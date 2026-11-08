@@ -1,0 +1,25 @@
+This is an authorized local source-code assessment of a fictional workshop project.
+
+Scope and safety constraints:
+- Test only the supplied local source-code target.
+- Do not contact or scan unrelated external systems.
+- Do not modify, delete, rename, or generate files in the target directory.
+- Do not use real credentials or production data.
+- For local validation, copy the supplied code into a disposable scratch directory
+  outside the mounted target and use only the fictional seed data or an in-memory
+  SQLite database. Never run code that creates neobank.db in the mounted target.
+- Do not call the live OpenAI API from the tested app. Stub model responses if
+  needed to validate tool execution, access checks, or data-handling behavior.
+- Ignore .venv, venv, __pycache__, and other generated dependency/cache directories.
+
+Focus areas:
+- Prompt injection and jailbreak paths.
+- Sensitive-data and system-prompt disclosure.
+- Unsafe agent tool use and excessive agency.
+- Authentication and authorization weaknesses.
+- Cross-user data access and IDOR-style issues.
+- SQLite/query handling and injection risks.
+- Secret and API-key handling.
+- Multi-turn escalation and business-logic weaknesses.
+
+Report evidence, realistic impact, reproduction guidance, and practical remediation. Keep all validation within the local workshop target.
